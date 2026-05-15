@@ -1,0 +1,27 @@
+name: Papka strukturasini yaratish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 7 sinf x 4 chorak = 28 papka yaratish
+        run: |
+          for sinf in 05-sinf 06-sinf 07-sinf 08-sinf 09-sinf 10-sinf 11-sinf; do
+            for chorak in 1-chorak 2-chorak 3-chorak 4-chorak; do
+              mkdir -p korgazmalar/$sinf/$chorak
+              touch korgazmalar/$sinf/$chorak/.gitkeep
+            done
+          done
+
+      - name: GitHub ga yuklash
+        run: |
+          git config user.email "azamat@infoschoool.uz"
+          git config user.name "Azamat Madrimov"
+          git add .
+          git commit -m "28 ta papka yaratildi - InfoLab struktura"
+          git push
