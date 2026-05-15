@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Packet Journey</title>
+
+<style>
+html,body{
+margin:0;
+overflow:hidden;
+background:#000510;
+font-family:Arial,sans-serif;
+}
+#ui{
+position:absolute;
+inset:0;
+pointer-events:none;
+z-index:10;
+}
+.title{
+position:absolute;
+top:15px;
+left:50%;
+transform:translateX(-50%);
+text-align:center;
+}
+.title h1{
+margin:0;
+font-size:28px;
+color:#00e5ff;
+text-shadow:0 0 20px #00e5ff88;
+}
+.title p{
+margin-top:5px;
+font-size:12px;
+color:#94a3b8;
+}
+.footer{
+position:absolute;
+bottom:12px;
+left:50%;
+transform:translateX(-50%);
+font-size:12px;
+color:#64748b;
+letter-spacing:2px;
+}
+.info{
+position:absolute;
+top:20px;
+right:20px;
+padding:14px;
+border-radius:14px;
+background:rgba(0,0,0,.55);
+border:1px solid #00e5ff33;
+backdrop-filter:blur(10px);
+}
+.info h3{
+margin:0 0 10px;
+font-size:14px;
+color:#00e5ff;
+}
+.info div{
+font-size:12px;
+margin-bottom:6px;
+color:white;
+}
+.bar{
+position:absolute;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+display:flex;
+gap:10px;
+pointer-events:auto;
+}
+input{
+width:min(70vw,500px);
+padding:14px;
+border:none;
+outline:none;
+border-radius:12px;
+background:#08111f;
+color:white;
+border:1px solid #00e5ff33;
+}
+button{
+padding:14px 18px;
+border:none;
+border-radius:12px;
+background:#08111f;
+color:#00e5ff;
+cursor:pointer;
+border:1px solid #00e5ff33;
+}
+button:hover{
+background:#10233f;
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+
+<div class="title">
+<h1>3D INTERNET VISUALIZER</h1>
+<p>DNS • TLS • ROUTING • SATELLITE</p>
+</div>
+
+<div class="info">
+<h3>OSI Layers</h3>
+<div>CPU → L7</div>
+<div>NIC → L2</div>
+<div>Router → L3</div>
+<div>ISP → L4</div>
+<div>Server → L7</div>
+</div>
+
+<div class="bar">
+<input id="domain" value="google.com">
+<button onclick="startJourney()">START</button>
+</div>
+
+<div class="footer">
+Developer • Azamat Madrimov
+</div>
+
+</div>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000510,.015);
+
+const camera = new THREE.PerspectiveCamera(
+60,
+window.innerWidth/window.innerHeight,
+0.1,
+1000
+);
+
+camera.position.set(0,2,24);
+
+const renderer = new THREE.WebGLRenderer({
+antialias:true
+});
+
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+
+document.body.appendChild(renderer.domElement);
+
+const ambient = new THREE.AmbientLight(0x334466,1);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0x88aaff,.7);
+sun.position.set(10,20,10);
+scene.add(sun);
+
+const starsGeo = new THREE.BufferGeometry();
+const starArr = [];
+
+for(let i=0;i<5000;i++){
+starArr.push(
+(Math.random()-.5)*300,
+(Math.random()-.5)*300,
+(Math.random()-.5)*300
+);
+}
+
+starsGeo.setAttribute(
+'position',
+new THREE.Float32BufferAttribute(starArr,3)
+);
+
+scene.add(
+new THREE.Points(
+starsGeo,
+new THREE.PointsMaterial({
+color:0xffffff,
+size:.08,
+transparent:true,
+opacity:.7
+})
+)
+);
+
+const NODES = {
+cpu:{p:[-6,-3,0],c:0xef4444},
+ram:{p:[-2,-3,0],c:0xa855f7},
+nic:{p:[2,-3,0],c:0x06b6d4},
+router:{p:[0,1,0],c:0xf59e0b},
+isp:{p:[-6,6,-2],c:0x3b82f6},
+server:{p:[6,10,0],c:0x10b981},
+sat:{p:[-3,14,2],c:0x00e5ff}
+};
+
+const nodeMeshes = {};
+
+function glowSphere(radius,color){
+const g = new THREE.Mesh(
+new THREE.SphereGeometry(radius,32,32),
+new THREE.MeshBasicMaterial({
+color,
+transparent:true,
+opacity:.08,
+blending:THREE.AdditiveBlending
+})
+);
+return g;
+}
+
+Object.entries(NODES).forEach(([id,n])=>{
+
+const group = new THREE.Group();
+
+const sphere = new THREE.Mesh(
+new THREE.SphereGeometry(.7,32,32),
+new THREE.MeshPhongMaterial({
+color:n.c,
+emissive:n.c,
+emissiveIntensity:.4
+})
+);
+
+group.add(sphere);
+group.add(glowSphere(1.8,n.c));
+
+group.position.set(...n.p);
+
+scene.add(group);
+
+nodeMeshes[id] = group;
+
+if(id==="router"){
+
+[-1,1].forEach(x=>{
+const ant = new THREE.Mesh(
+new THREE.CylinderGeometry(.04,.04,1.5),
+new THREE.MeshPhongMaterial({color:0xffffff})
+);
+
+ant.position.set(x,.9,0);
+
+group.add(ant);
+});
+
+}
+
+if(id==="server"){
+
+for(let i=0;i<6;i++){
+
+const rack = new THREE.Mesh(
+new THREE.BoxGeometry(1.4,.18,.8),
+new THREE.MeshPhongMaterial({
+color:i===2?0x10b981:0x1a2a1a,
+emissive:i===2?0x10b981:0x000000,
+emissiveIntensity:.5
+})
+);
+
+rack.position.y = -1 + i*.35;
+
+group.add(rack);
+}
+}
+
+if(id==="sat"){
+
+const panelL = new THREE.Mesh(
+new THREE.BoxGeometry(1.4,.05,.8),
+new THREE.MeshPhongMaterial({
+color:0x2244ff
+})
+);
+
+panelL.position.x = -1.6;
+
+group.add(panelL);
+
+const panelR = panelL.clone();
+panelR.position.x = 1.6;
+group.add(panelR);
+}
+
+});
+
+function curve(a,b){
+
+const A = new THREE.Vector3(...NODES[a].p);
+const B = new THREE.Vector3(...NODES[b].p);
+
+const mid = A.clone().lerp(B,.5);
+mid.z += 2;
+
+return new THREE.CatmullRomCurve3([
+A,mid,B
+]);
+}
+
+const JOURNEY = [
+["cpu","ram",0xa855f7],
+["ram","nic",0x06b6d4],
+["nic","router",0xf59e0b],
+["router","isp",0x3b82f6],
+["isp","server",0x10b981],
+["server","sat",0x00e5ff]
+];
+
+const curves = [];
+
+JOURNEY.forEach(j=>{
+
+const c = curve(j[0],j[1]);
+
+curves.push({
+curve:c,
+color:j[2]
+});
+
+const points = c.getPoints(80);
+
+scene.add(
+new THREE.Line(
+new THREE.BufferGeometry().setFromPoints(points),
+new THREE.LineBasicMaterial({
+color:j[2],
+transparent:true,
+opacity:.4
+})
+)
+);
+
+});
+
+const packets = [];
+
+function spawnPacket(curve,color){
+
+const mesh = new THREE.Mesh(
+new THREE.SphereGeometry(.12,10,10),
+new THREE.MeshBasicMaterial({
+color,
+transparent:true,
+opacity:1
+})
+);
+
+scene.add(mesh);
+
+packets.push({
+mesh,
+curve,
+t:0
+});
+
+}
+
+function startJourney(){
+
+curves.forEach(c=>{
+spawnPacket(c.curve,c.color);
+});
+
+}
+
+setInterval(()=>{
+
+curves.forEach(c=>{
+spawnPacket(c.curve,c.color);
+});
+
+},1200);
+
+function animate(){
+
+requestAnimationFrame(animate);
+
+const t = Date.now()*.001;
+
+Object.values(nodeMeshes).forEach((m,i)=>{
+m.rotation.y += .005;
+m.children[0].scale.setScalar(
+1 + Math.sin(t*3+i)*.05
+);
+});
+
+packets.forEach((p,index)=>{
+
+p.t += .004;
+
+if(p.t>=1){
+
+scene.remove(p.mesh);
+packets.splice(index,1);
+return;
+
+}
+
+const pos = p.curve.getPoint(p.t);
+
+p.mesh.position.copy(pos);
+
+});
+
+camera.lookAt(0,2,0);
+
+renderer.render(scene,camera);
+
+}
+
+animate();
+
+window.addEventListener('resize',()=>{
+
+camera.aspect =
+window.innerWidth/window.innerHeight;
+
+camera.updateProjectionMatrix();
+
+renderer.setSize(
+window.innerWidth,
+window.innerHeight
+);
+
+});
+</script>
+
+</body>
+</html>
