@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Matnni Belgilash va Tahrirlash</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0505;color:#e2e8f0;font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.ui{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:10px 14px}
+
+.hdr{text-align:center;margin-bottom:8px}
+.hdr-badge{font-size:8px;color:#ef444455;letter-spacing:4px}
+.hdr h1{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 0 20px #ef444444}
+.hdr p{font-size:.73rem;color:#475569}
+
+/* Action buttons */
+.actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
+.act-btn{padding:7px 14px;border-radius:8px;border:1px solid #3a1a1a;
+  color:#64748b;font-size:.78rem;cursor:pointer;transition:all .2s;background:transparent;
+  font-family:'Inter',sans-serif;font-weight:600}
+.act-btn:hover{border-color:#ef444466;color:#fca5a5}
+.act-btn.active{background:rgba(239,68,68,.12);border-color:#ef4444;color:#f87171}
+
+/* Main */
+.main{flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:10px;min-height:0}
+
+/* Editor panel */
+.editor-panel{background:rgba(10,3,3,.88);border:1px solid #3a1a1a;border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column}
+.panel-title{font-size:8px;letter-spacing:3px;font-weight:700;padding:10px 14px 6px}
+.pt-red{color:#ef4444}
+.pt-blue{color:#3b82f6}
+.pt-green{color:#22c55e}
+
+/* Word-like editor */
+.editor-chrome{flex:1;display:flex;flex-direction:column;margin:0 10px 10px;
+  border-radius:10px;overflow:hidden;border:1px solid #3a1a1a}
+.editor-titlebar{background:#2a1010;padding:5px 10px;display:flex;align-items:center;gap:6px}
+.editor-dots{display:flex;gap:4px}
+.editor-dot{width:8px;height:8px;border-radius:50%}
+.editor-name{flex:1;text-align:center;font-size:.7rem;color:#64748b;font-family:'JetBrains Mono',monospace}
+
+/* Ribbon */
+.ribbon{background:#1a0808;padding:6px 10px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #3a1a1a}
+.rb{padding:4px 9px;border-radius:5px;border:1px solid #2a1010;font-size:.68rem;
+  color:#64748b;cursor:pointer;transition:all .2s;user-select:none}
+.rb:hover{background:rgba(239,68,68,.1);border-color:#ef444444;color:#fca5a5}
+.rb.on{background:rgba(239,68,68,.15);border-color:#ef4444;color:#f87171}
+.rb-sep{width:1px;height:16px;background:#3a1a1a;margin:0 2px}
+
+/* Text area */
+.text-area{flex:1;background:#fff;padding:16px;overflow-y:auto;position:relative;cursor:text}
+.text-content{font-family:'Georgia',serif;font-size:.88rem;color:#1e293b;line-height:1.8;
+  white-space:pre-wrap;position:relative}
+.text-content .sel{background:#3b82f688;border-radius:2px}
+.text-content .word-sel{background:#ef444488;border-radius:2px}
+.cursor-line{display:inline-block;width:2px;height:16px;background:#1e293b;
+  animation:blink .7s infinite;vertical-align:middle}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Status bar */
+.status-bar{background:#2a1010;padding:3px 10px;font-size:.62rem;
+  color:#64748b;font-family:'JetBrains Mono',monospace;display:flex;gap:12px}
+
+/* Right */
+.right{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+/* Steps */
+.steps-panel{background:rgba(10,3,3,.88);border:1px solid #3a1a1a;border-radius:14px;padding:12px;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.steps-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.step-item{padding:8px 10px;border-radius:9px;background:rgba(20,5,5,.7);
+  border:1px solid #2a1010;transition:all .3s;opacity:.35}
+.step-item.show{opacity:1;border-color:#ef444433;animation:slideIn .4s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.step-item.active{border-color:#ef4444;background:rgba(239,68,68,.07)}
+.si-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.si-icon{font-size:1rem}
+.si-title{font-size:.78rem;font-weight:700;color:#e2e8f0}
+.si-desc{font-size:.67rem;color:#64748b;line-height:1.4}
+.si-keys{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.si-key{padding:2px 8px;border-radius:4px;font-size:.62rem;font-family:'JetBrains Mono',monospace;
+  background:rgba(239,68,68,.1);border:1px solid #ef444433;color:#f87171}
+
+/* Keys visual */
+.keys-panel{background:rgba(10,3,3,.88);border:1px solid #3a1a1a;border-radius:14px;padding:10px}
+.keys-row{display:flex;gap:5px;flex-wrap:wrap}
+.key{min-width:32px;height:30px;border-radius:6px;border:1.5px solid #3a1a1a;
+  background:rgba(20,5,5,.8);display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#64748b;
+  transition:all .2s;padding:0 5px}
+.key.lit{background:rgba(239,68,68,.2);border-color:#ef4444;
+  color:#f87171;box-shadow:0 0 12px rgba(239,68,68,.4)}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="ui">
+  <div class="hdr">
+    <div class="hdr-badge">&#9679; 5-SINF &middot; 1-CHORAK &middot; 3-MAVZU</div>
+    <h1>&#9999; Matnni Belgilash va Tahrirlash</h1>
+    <p>Matnni tanlash, o'chirish, ko'chirish va formatlash</p>
+  </div>
+
+  <div class="actions">
+    <button class="act-btn" onclick="doAction('select-word')">&#127997; So'z tanlash</button>
+    <button class="act-btn" onclick="doAction('select-all')">&#9646; Barchasini</button>
+    <button class="act-btn" onclick="doAction('bold')"><b>B</b> Qalin</button>
+    <button class="act-btn" onclick="doAction('italic')"><i>I</i> Kursiv</button>
+    <button class="act-btn" onclick="doAction('delete')">&#128465; O'chirish</button>
+    <button class="act-btn" onclick="doAction('undo')">&#8634; Bekor qil</button>
+    <button class="act-btn" onclick="doAction('reset')">&#8635; Qayta</button>
+  </div>
+
+  <div class="main">
+    <!-- Editor -->
+    <div class="editor-panel">
+      <div class="panel-title pt-red">&#128196; WORD MUHARRIRI &mdash; INTERAKTIV</div>
+      <div class="editor-chrome">
+        <div class="editor-titlebar">
+          <div class="editor-dots">
+            <div class="editor-dot" style="background:#ef4444"></div>
+            <div class="editor-dot" style="background:#f59e0b"></div>
+            <div class="editor-dot" style="background:#22c55e"></div>
+          </div>
+          <div class="editor-name">darsim.docx &mdash; Microsoft Word</div>
+        </div>
+        <div class="ribbon">
+          <span class="rb" id="rb-bold"><b>B</b></span>
+          <span class="rb" id="rb-italic"><i>I</i></span>
+          <span class="rb" id="rb-under"><u>U</u></span>
+          <div class="rb-sep"></div>
+          <span class="rb" id="rb-copy">&#128203; Nusxa</span>
+          <span class="rb" id="rb-paste">&#128196; Joylashtir</span>
+          <span class="rb" id="rb-cut">&#9988; Qirqib ol</span>
+          <div class="rb-sep"></div>
+          <span class="rb" id="rb-undo">&#8634; Bekor</span>
+        </div>
+        <div class="text-area" id="text-area">
+          <div class="text-content" id="text-content"></div>
+        </div>
+        <div class="status-bar">
+          <span id="st-sel">Belgilangan: 0 ta belgi</span>
+          <span id="st-words">So'zlar: 12</span>
+          <span id="st-action">Tayyor</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div class="right">
+      <div class="steps-panel">
+        <div class="panel-title pt-red" style="margin-bottom:8px">&#9889; AMALLAR TAVSIFI</div>
+        <div class="steps-list" id="steps-list"></div>
+      </div>
+
+      <div class="keys-panel">
+        <div class="panel-title pt-blue" style="margin-bottom:8px">&#9109; TEZKOR TUGMALAR</div>
+        <div class="keys-row">
+          <div class="key" id="k-ctrl">Ctrl</div>
+          <div class="key" id="k-a">A</div>
+          <div class="key" id="k-c">C</div>
+          <div class="key" id="k-v">V</div>
+          <div class="key" id="k-x">X</div>
+          <div class="key" id="k-z">Z</div>
+          <div class="key" id="k-b">B</div>
+          <div class="key" id="k-i">I</div>
+          <div class="key" id="k-del">Del</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Background
+var bgc=document.getElementById('bg'),bx=bgc.getContext('2d'),bPts=[];
+function rBg(){bgc.width=innerWidth;bgc.height=innerHeight;}rBg();window.addEventListener('resize',rBg);
+for(var i=0;i<40;i++) bPts.push({x:Math.random()*1400,y:Math.random()*900,vx:(Math.random()-.5)*.08,vy:(Math.random()-.5)*.08});
+(function ab(){requestAnimationFrame(ab);bx.clearRect(0,0,bgc.width,bgc.height);
+  bPts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bgc.width;if(p.x>bgc.width)p.x=0;
+    if(p.y<0)p.y=bgc.height;if(p.y>bgc.height)p.y=0;});
+  for(var i=0;i<bPts.length;i++) for(var j=i+1;j<bPts.length;j++){
+    var d=Math.hypot(bPts[i].x-bPts[j].x,bPts[i].y-bPts[j].y);
+    if(d<90){bx.beginPath();bx.moveTo(bPts[i].x,bPts[i].y);bx.lineTo(bPts[j].x,bPts[j].y);
+      bx.strokeStyle='rgba(239,68,68,'+(0.02*(1-d/90))+')';bx.stroke();}}
+  bPts.forEach(function(p){bx.beginPath();bx.arc(p.x,p.y,1.2,0,Math.PI*2);bx.fillStyle='rgba(239,68,68,.1)';bx.fill();});
+})();
+
+// Text state
+var ORIGINAL = "O'zbekiston — go'zal vatanimiz.\nBiz bu yerda yashab, o'qib, mehnat qilamiz.\nKelajak bizning qo'limizda!";
+var state = {
+  text: ORIGINAL,
+  bold: false,
+  italic: false,
+  selected: false,
+  selectedWord: '',
+  history: []
+};
+
+var STEPS_DATA = [
+  {icon:'&#127997;',title:'So\'z tanlash',desc:'Bir so\'zni ikki marta bosish bilan tanlash mumkin. Yoki sichqoncha bilan sudrab tanlang.',keys:['2x Click']},
+  {icon:'&#9646;',title:'Barchasini tanlash',desc:'Ctrl+A — hujjatdagi barcha matnni bir zumda tanlaydi. Juda qulay!',keys:['Ctrl','A']},
+  {icon:'&#66;',title:'Qalin (Bold)',desc:'Ctrl+B — belgilangan matnni qalin qiladi. Muhim so\'zlarni ajratib ko\'rsatish uchun.',keys:['Ctrl','B']},
+  {icon:'&#73;',title:'Kursiv (Italic)',desc:'Ctrl+I — matnni qiyshiq qiladi. Kitob nomlari yoki chet so\'zlar uchun ishlatiladi.',keys:['Ctrl','I']},
+  {icon:'&#128465;',title:'O\'chirish',desc:'Delete yoki Backspace — belgilangan matnni o\'chiradi. Ehtiyot bo\'ling!',keys:['Del','Backspace']},
+  {icon:'&#8634;',title:'Bekor qilish',desc:'Ctrl+Z — oxirgi amalni bekor qiladi. Xato qilsangiz shu tugmani bosing!',keys:['Ctrl','Z']},
+];
+
+function buildSteps(){
+  var list=document.getElementById('steps-list');list.innerHTML='';
+  STEPS_DATA.forEach(function(s){
+    var d=document.createElement('div');d.className='step-item show';
+    var keys=s.keys.map(function(k){return '<span class="si-key">'+k+'</span>';}).join('');
+    d.innerHTML='<div class="si-top"><div class="si-icon">'+s.icon+'</div><div class="si-title">'+s.title+'</div></div>'
+      +'<div class="si-desc">'+s.desc+'</div>'
+      +'<div class="si-keys">'+keys+'</div>';
+    list.appendChild(d);
+  });
+}
+
+function renderText(){
+  var tc=document.getElementById('text-content');
+  var t=state.text;
+  var style='';
+  if(state.bold) style+='font-weight:700;';
+  if(state.italic) style+='font-style:italic;';
+
+  if(state.selected){
+    // Highlight selected word
+    var escaped=state.selectedWord.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var parts=t.split(new RegExp('('+escaped+')','g'));
+    tc.innerHTML=parts.map(function(p,i){
+      if(i%2===1) return '<span class="word-sel" style="'+style+'">'+p+'</span>';
+      return '<span style="'+style+'">'+p.replace(/\n/g,'<br>')+'</span>';
+    }).join('');
+  } else if(state.allSelected){
+    tc.innerHTML='<span class="sel" style="'+style+'">'+t.replace(/\n/g,'<br>')+'</span>';
+  } else {
+    tc.innerHTML='<span style="'+style+'">'+t.replace(/\n/g,'<br>')+'</span>'+'<span class="cursor-line"></span>';
+  }
+}
+
+function lightKeys(ids){
+  ['k-ctrl','k-a','k-c','k-v','k-x','k-z','k-b','k-i','k-del'].forEach(function(id){
+    document.getElementById(id).classList.remove('lit');
+  });
+  ids.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){el.classList.add('lit');setTimeout(function(){el.classList.remove('lit');},700);}
+  });
+}
+
+function lightRibbon(id){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.classList.add('on');
+  setTimeout(function(){el.classList.remove('on');},700);
+}
+
+function setStatus(sel,action){
+  document.getElementById('st-sel').textContent='Belgilangan: '+(sel||0)+' ta belgi';
+  document.getElementById('st-action').textContent=action||'Tayyor';
+}
+
+function highlightStep(idx){
+  document.querySelectorAll('.step-item').forEach(function(el,i){
+    el.classList.toggle('active',i===idx);
+  });
+}
+
+function doAction(act){
+  state.history.push({text:state.text,bold:state.bold,italic:state.italic,selected:state.selected,allSelected:state.allSelected,selectedWord:state.selectedWord});
+
+  document.querySelectorAll('.act-btn').forEach(function(b){b.classList.remove('active');});
+
+  if(act==='select-word'){
+    var words=state.text.split(/\s+/);
+    state.selectedWord=words[Math.floor(Math.random()*words.length)].replace(/[^\w']/g,'');
+    if(!state.selectedWord) state.selectedWord='vatanimiz';
+    state.selected=true; state.allSelected=false;
+    setStatus(state.selectedWord.length,"So'z tanlandi");
+    highlightStep(0);
+    lightKeys([]);
+  }
+  else if(act==='select-all'){
+    state.allSelected=true; state.selected=false;
+    setStatus(state.text.length,'Hammasi tanlandi');
+    highlightStep(1); lightKeys(['k-ctrl','k-a']); lightRibbon('rb-copy');
+  }
+  else if(act==='bold'){
+    state.bold=!state.bold;
+    setStatus(0,state.bold?'Qalin yoqildi':'Qalin o\'chirildi');
+    highlightStep(2); lightKeys(['k-ctrl','k-b']); lightRibbon('rb-bold');
+    document.getElementById('rb-bold').classList.toggle('on',state.bold);
+  }
+  else if(act==='italic'){
+    state.italic=!state.italic;
+    setStatus(0,state.italic?'Kursiv yoqildi':'Kursiv o\'chirildi');
+    highlightStep(3); lightKeys(['k-ctrl','k-i']); lightRibbon('rb-italic');
+    document.getElementById('rb-italic').classList.toggle('on',state.italic);
+  }
+  else if(act==='delete'){
+    if(state.allSelected){state.text='';state.allSelected=false;}
+    else if(state.selected&&state.selectedWord){
+      state.text=state.text.replace(state.selectedWord,'___');
+      state.selected=false;
+    }
+    setStatus(0,'O\'chirildi'); highlightStep(4); lightKeys(['k-del']);
+  }
+  else if(act==='undo'){
+    if(state.history.length>1){
+      var prev=state.history[state.history.length-2];
+      state.text=prev.text; state.bold=prev.bold; state.italic=prev.italic;
+      state.selected=prev.selected; state.allSelected=prev.allSelected;
+      state.selectedWord=prev.selectedWord;
+      state.history.pop();
+    } else {
+      state.text=ORIGINAL; state.bold=false; state.italic=false;
+      state.selected=false; state.allSelected=false; state.selectedWord='';
+    }
+    setStatus(0,'Bekor qilindi'); highlightStep(5); lightKeys(['k-ctrl','k-z']); lightRibbon('rb-undo');
+  }
+  else if(act==='reset'){
+    state.text=ORIGINAL; state.bold=false; state.italic=false;
+    state.selected=false; state.allSelected=false; state.selectedWord='';
+    state.history=[];
+    setStatus(0,'Qayta boshlandi');
+    document.getElementById('rb-bold').classList.remove('on');
+    document.getElementById('rb-italic').classList.remove('on');
+    document.querySelectorAll('.step-item').forEach(function(el){el.classList.remove('active');});
+  }
+  renderText();
+}
+
+buildSteps();
+renderText();
+</script>
+</body>
+</html>
