@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Matnni O'chirish</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050a08;color:#e2e8f0;font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.ui{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:10px 14px}
+
+.hdr{text-align:center;margin-bottom:8px}
+.hdr-badge{font-size:8px;color:#f59e0b55;letter-spacing:4px}
+.hdr h1{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 0 20px #f59e0b44}
+.hdr p{font-size:.73rem;color:#475569}
+
+/* Task bar */
+.taskbar{background:rgba(5,15,8,.9);border:1px solid #1a3a20;border-radius:12px;
+  padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.task-icon{font-size:1.4rem;flex-shrink:0}
+.task-body{flex:1}
+.task-title{font-size:.82rem;font-weight:700;color:#e2e8f0;margin-bottom:2px}
+.task-desc{font-size:.7rem;color:#64748b}
+.task-progress{margin-left:auto;text-align:center}
+.progress-ring{position:relative;width:44px;height:44px}
+.progress-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:800;color:#f59e0b}
+
+/* Main */
+.main{flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:10px;min-height:0}
+
+/* Editor */
+.editor-panel{background:rgba(5,10,5,.88);border:1px solid #1a3a1a;border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column}
+.panel-title{font-size:8px;letter-spacing:3px;font-weight:700;padding:10px 14px 6px}
+.pt-yellow{color:#f59e0b}
+.pt-green{color:#22c55e}
+.pt-blue{color:#3b82f6}
+
+.editor-chrome{flex:1;display:flex;flex-direction:column;margin:0 10px 10px;
+  border-radius:10px;overflow:hidden;border:1px solid #1a3a1a}
+.titlebar{background:#1a2a10;padding:5px 10px;display:flex;align-items:center;gap:6px}
+.titlebar-dots{display:flex;gap:4px}
+.titlebar-dot{width:8px;height:8px;border-radius:50%}
+.fname{flex:1;text-align:center;font-size:.7rem;color:#64748b;font-family:'JetBrains Mono',monospace}
+
+.ribbon{background:#142010;padding:6px 10px;display:flex;gap:5px;align-items:center;border-bottom:1px solid #1a3a1a}
+.rb{padding:3px 9px;border-radius:5px;border:1px solid #1a2a10;font-size:.68rem;
+  color:#64748b;cursor:pointer;transition:all .2s;user-select:none}
+.rb:hover{background:rgba(245,158,11,.1);border-color:#f59e0b44;color:#fcd34d}
+.rb.lit{background:rgba(245,158,11,.2);border-color:#f59e0b;color:#fbbf24}
+
+/* Text zone */
+.text-zone{flex:1;background:#fff;padding:14px;overflow-y:auto;position:relative}
+.editor-text{font-family:'Georgia',serif;font-size:.88rem;line-height:1.9;color:#1e293b;
+  position:relative;cursor:text;outline:none;min-height:100%}
+.editor-text [data-err]{background:#fee2e2;border-bottom:2px solid #ef4444;
+  border-radius:2px;cursor:pointer;transition:all .2s;position:relative}
+.editor-text [data-err]:hover{background:#fecaca}
+.editor-text [data-err].removed{text-decoration:line-through;color:#94a3b8;
+  background:#f1f5f9;border-color:#cbd5e1}
+.editor-text .cursor{display:inline-block;width:2px;height:16px;background:#1e293b;
+  animation:blink .7s infinite;vertical-align:middle}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* Hint tooltip */
+.hint-box{position:absolute;background:#1e293b;color:#e2e8f0;border-radius:8px;
+  padding:6px 10px;font-size:.65rem;white-space:nowrap;z-index:100;
+  box-shadow:0 4px 12px rgba(0,0,0,.4);pointer-events:none;opacity:0;transition:opacity .2s}
+.hint-box.show{opacity:1}
+
+.status-bar{background:#1a2a10;padding:3px 10px;font-size:.62rem;
+  color:#64748b;font-family:'JetBrains Mono',monospace;display:flex;gap:12px}
+
+/* Right */
+.right{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+.methods-panel{background:rgba(5,10,5,.88);border:1px solid #1a3a1a;border-radius:14px;padding:12px;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.methods-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.method-item{padding:9px 11px;border-radius:9px;background:rgba(10,20,10,.7);
+  border:1px solid #1a3a1a;cursor:pointer;transition:all .2s}
+.method-item:hover{border-color:#f59e0b44;background:rgba(245,158,11,.05)}
+.method-item.active{border-color:#f59e0b;background:rgba(245,158,11,.08);animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.97)}to{transform:scale(1)}}
+.mi-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.mi-icon{font-size:1rem}
+.mi-title{font-size:.78rem;font-weight:700;color:#e2e8f0}
+.mi-desc{font-size:.67rem;color:#64748b;line-height:1.4}
+.mi-keys{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.mi-key{padding:2px 7px;border-radius:4px;font-size:.62rem;font-family:'JetBrains Mono',monospace;
+  background:rgba(245,158,11,.1);border:1px solid #f59e0b33;color:#fbbf24}
+
+/* Keys */
+.keys-panel{background:rgba(5,10,5,.88);border:1px solid #1a3a1a;border-radius:14px;padding:10px}
+.keys-row{display:flex;gap:5px;flex-wrap:wrap}
+.key{min-width:36px;height:30px;border-radius:6px;border:1.5px solid #1a3a1a;
+  background:rgba(10,20,10,.8);display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#64748b;transition:all .2s;padding:0 5px}
+.key.lit{background:rgba(245,158,11,.2);border-color:#f59e0b;color:#fbbf24;box-shadow:0 0 12px rgba(245,158,11,.4)}
+
+/* Score */
+.score-panel{background:rgba(5,10,5,.88);border:1px solid #1a3a1a;border-radius:14px;padding:10px;display:flex;align-items:center;gap:10px}
+.score-item{flex:1;text-align:center}
+.score-num{font-size:1.4rem;font-weight:800;color:#f59e0b}
+.score-lbl{font-size:.65rem;color:#475569}
+
+/* Success */
+.success-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:100;
+  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s}
+.success-overlay.show{opacity:1;pointer-events:all}
+.success-box{background:#0f2a10;border:2px solid #22c55e;border-radius:20px;padding:32px 40px;text-align:center}
+.success-box h2{font-size:1.8rem;color:#22c55e;margin-bottom:8px}
+.success-box p{color:#64748b;font-size:.88rem;margin-bottom:20px}
+.success-btn{padding:12px 28px;background:rgba(34,197,94,.15);border:1.5px solid #22c55e;
+  border-radius:10px;color:#22c55e;font-size:.9rem;cursor:pointer;font-family:'Inter',sans-serif;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="ui">
+  <div class="hdr">
+    <div class="hdr-badge">&#9679; 5-SINF &middot; 1-CHORAK &middot; 4-MAVZU</div>
+    <h1>&#128465; Matnni O'chirish &mdash; Amaliy mashg'ulot</h1>
+    <p>Xato yozilgan so'zlarni toping va o'chiring!</p>
+  </div>
+
+  <div class="taskbar">
+    <div class="task-icon">&#127919;</div>
+    <div class="task-body">
+      <div class="task-title">Vazifa: Qizil belgilangan xato so'zlarni o'chiring</div>
+      <div class="task-desc">Xato so'zni bosing &rarr; Backspace yoki Delete tugmasini bosing</div>
+    </div>
+    <div class="task-progress">
+      <svg class="progress-ring" width="44" height="44">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="#1a3a1a" stroke-width="3"/>
+        <circle id="prog-circle" cx="22" cy="22" r="18" fill="none" stroke="#f59e0b"
+          stroke-width="3" stroke-dasharray="113" stroke-dashoffset="113"
+          stroke-linecap="round" transform="rotate(-90 22 22)" style="transition:stroke-dashoffset .5s"/>
+      </svg>
+      <div class="progress-num" id="prog-num">0/5</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Editor -->
+    <div class="editor-panel">
+      <div class="panel-title pt-yellow">&#128196; MATN MUHARRIRI &mdash; XATOLARNI TOPING</div>
+      <div class="editor-chrome">
+        <div class="titlebar">
+          <div class="titlebar-dots">
+            <div class="titlebar-dot" style="background:#ef4444"></div>
+            <div class="titlebar-dot" style="background:#f59e0b"></div>
+            <div class="titlebar-dot" style="background:#22c55e"></div>
+          </div>
+          <div class="fname">mashq.docx &mdash; Microsoft Word</div>
+        </div>
+        <div class="ribbon">
+          <span class="rb" id="rb-back">&#9003; Backspace</span>
+          <span class="rb" id="rb-del">Del</span>
+          <span class="rb" id="rb-undo">&#8634; Ctrl+Z</span>
+          <span class="rb" id="rb-selall">Ctrl+A</span>
+        </div>
+        <div class="text-zone" id="text-zone">
+          <div class="editor-text" id="editor-text"></div>
+          <div class="hint-box" id="hint-box"></div>
+        </div>
+        <div class="status-bar">
+          <span id="st-info">Xato so'zni bosing</span>
+          <span id="st-remain">Qolgan: 5 ta xato</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right -->
+    <div class="right">
+      <div class="methods-panel">
+        <div class="panel-title pt-yellow" style="margin-bottom:8px">&#9889; O'CHIRISH USULLARI</div>
+        <div class="methods-list" id="methods-list"></div>
+      </div>
+
+      <div class="keys-panel">
+        <div class="panel-title pt-blue" style="margin-bottom:8px">&#9109; TUGMALAR</div>
+        <div class="keys-row">
+          <div class="key" id="k-bs">&#9003;</div>
+          <div class="key" id="k-del">Del</div>
+          <div class="key" id="k-ctrl">Ctrl</div>
+          <div class="key" id="k-z">Z</div>
+          <div class="key" id="k-a">A</div>
+        </div>
+      </div>
+
+      <div class="score-panel">
+        <div class="score-item">
+          <div class="score-num" id="sc-removed">0</div>
+          <div class="score-lbl">O'chirildi</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num" id="sc-remain" style="color:#ef4444">5</div>
+          <div class="score-lbl">Qoldi</div>
+        </div>
+        <div class="score-item">
+          <div class="score-num" id="sc-score" style="color:#22c55e">0</div>
+          <div class="score-lbl">Ball</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success -->
+<div class="success-overlay" id="success-overlay">
+  <div class="success-box">
+    <div style="font-size:3rem;margin-bottom:8px">&#127881;</div>
+    <h2>Ajoyib!</h2>
+    <p>Barcha xatolarni topdingiz va o'chirdingiz!<br>
+    Siz matn tahrirlashni yaxshi bilasiz!</p>
+    <button class="success-btn" onclick="resetGame()">&#8635; Qayta o'ynash</button>
+  </div>
+</div>
+
+<script>
+// Background
+var bgc=document.getElementById('bg'),bx=bgc.getContext('2d'),bPts=[];
+function rBg(){bgc.width=innerWidth;bgc.height=innerHeight;}rBg();window.addEventListener('resize',rBg);
+for(var i=0;i<40;i++) bPts.push({x:Math.random()*1400,y:Math.random()*900,vx:(Math.random()-.5)*.08,vy:(Math.random()-.5)*.08});
+(function ab(){requestAnimationFrame(ab);bx.clearRect(0,0,bgc.width,bgc.height);
+  bPts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bgc.width;if(p.x>bgc.width)p.x=0;
+    if(p.y<0)p.y=bgc.height;if(p.y>bgc.height)p.y=0;});
+  for(var i=0;i<bPts.length;i++) for(var j=i+1;j<bPts.length;j++){
+    var d=Math.hypot(bPts[i].x-bPts[j].x,bPts[i].y-bPts[j].y);
+    if(d<90){bx.beginPath();bx.moveTo(bPts[i].x,bPts[i].y);bx.lineTo(bPts[j].x,bPts[j].y);
+      bx.strokeStyle='rgba(245,158,11,'+(0.02*(1-d/90))+')';bx.stroke();}}
+  bPts.forEach(function(p){bx.beginPath();bx.arc(p.x,p.y,1.2,0,Math.PI*2);bx.fillStyle='rgba(245,158,11,.1)';bx.fill();});
+})();
+
+// Game data
+var ERRORS = [
+  {id:'e1', wrong:'kompyutor',  correct:'kompyuter'},
+  {id:'e2', wrong:'klavyatura', correct:'klaviatura'},
+  {id:'e3', wrong:'hujjat',     correct:'hujjat',   note:'To\'g\'ri yozilgan — o\'chirmang!', safe:true},
+  {id:'e4', wrong:'prograamma', correct:'programma'},
+  {id:'e5', wrong:'internett',  correct:'internet'},
+  {id:'e6', wrong:'fayl',       correct:'fayl',      note:'To\'g\'ri yozilgan!', safe:true},
+  {id:'e7', wrong:'monityor',   correct:'monitor'},
+];
+
+var REAL_ERRORS = ERRORS.filter(function(e){return !e.safe;});
+var removed = 0, score = 0, selected = null;
+
+var TEXT_PARTS = [
+  'Bugun biz ',{id:'e1'},' bilan ishlashni o\'rgandik. ',
+  {id:'e2'},' yordamida matn yozish mumkin. ',
+  'Har bir ',{id:'e4'},' o\'z ',{id:'e6'},' da saqlanadi. ',
+  'Biz ',{id:'e5'},' orqali ma\'lumot olamiz. ',
+  'Ekranda ',{id:'e7'},' ko\'rinadi.',
+];
+
+var METHODS = [
+  {icon:'&#9003;',title:'Backspace',desc:'Kursordan CHAP tomondagi belgini o\'chiradi. Har bosishda 1 ta belgi ketadi.',keys:['Backspace']},
+  {icon:'&#8998;',title:'Delete (Del)',desc:'Kursordan O\'NG tomondagi belgini o\'chiradi. Belgilangan matnni ham o\'chiradi.',keys:['Del']},
+  {icon:'&#128465;',title:'Tanlash + O\'chirish',desc:'Matnni belgilab, keyin Delete yoki Backspace bosing. Tez usul!',keys:['Select','Del']},
+  {icon:'&#8634;',title:'Ctrl + Z — Bekor qilish',desc:'O\'chirishni xato qilsangiz — Ctrl+Z bilan qaytaring!',keys:['Ctrl','Z']},
+];
+
+function buildMethods(){
+  var list=document.getElementById('methods-list');list.innerHTML='';
+  METHODS.forEach(function(m){
+    var d=document.createElement('div');d.className='method-item';
+    var keys=m.keys.map(function(k){return '<span class="mi-key">'+k+'</span>';}).join('');
+    d.innerHTML='<div class="mi-top"><div class="mi-icon">'+m.icon+'</div><div class="mi-title">'+m.title+'</div></div>'
+      +'<div class="mi-desc">'+m.desc+'</div><div class="mi-keys">'+keys+'</div>';
+    list.appendChild(d);
+  });
+}
+
+function buildText(){
+  var et=document.getElementById('editor-text');
+  et.innerHTML='';
+  TEXT_PARTS.forEach(function(part){
+    if(typeof part==='string'){
+      et.appendChild(document.createTextNode(part));
+    } else {
+      var err=ERRORS.find(function(e){return e.id===part.id;});
+      if(!err)return;
+      var span=document.createElement('span');
+      span.id=err.id;
+      span.textContent=err.wrong;
+      if(!err.safe){
+        span.setAttribute('data-err','1');
+        span.setAttribute('data-correct',err.correct);
+        span.onclick=function(){selectError(err.id);};
+        span.title='Xato so\'z — bosing!';
+      }
+      et.appendChild(span);
+    }
+  });
+}
+
+function selectError(id){
+  // Deselect previous
+  if(selected){
+    var prev=document.getElementById(selected);
+    if(prev) prev.style.outline='';
+  }
+  selected=id;
+  var el=document.getElementById(id);
+  if(!el||el.classList.contains('removed'))return;
+  el.style.outline='2px solid #f59e0b';
+  el.style.outlineOffset='2px';
+  document.getElementById('st-info').textContent='"'+el.textContent+'" tanlandi — Del yoki Backspace bosing';
+  lightKey('k-del'); lightKey('k-bs');
+  highlightMethod(2);
+
+  // Show hint
+  var hint=document.getElementById('hint-box');
+  var rect=el.getBoundingClientRect();
+  var zone=document.getElementById('text-zone').getBoundingClientRect();
+  hint.textContent='Xato: "'+el.textContent+'" → To\'g\'risi: "'+el.getAttribute('data-correct')+'"';
+  hint.style.left=(rect.left-zone.left)+'px';
+  hint.style.top=(rect.bottom-zone.top+4)+'px';
+  hint.className='hint-box show';
+  setTimeout(function(){hint.className='hint-box';},2500);
+}
+
+function removeSelected(){
+  if(!selected)return;
+  var el=document.getElementById(selected);
+  if(!el||el.classList.contains('removed'))return;
+  el.classList.add('removed');
+  el.style.outline='';
+  selected=null;
+  removed++;score+=20;
+  updateScore();
+  document.getElementById('st-info').textContent='O\'chirildi! ✓';
+  lightKey('k-bs');lightKey('k-del');
+  if(removed>=REAL_ERRORS.length){
+    setTimeout(function(){document.getElementById('success-overlay').classList.add('show');},600);
+  }
+}
+
+function updateScore(){
+  var remain=REAL_ERRORS.length-removed;
+  document.getElementById('sc-removed').textContent=removed;
+  document.getElementById('sc-remain').textContent=remain;
+  document.getElementById('sc-score').textContent=score;
+  document.getElementById('st-remain').textContent='Qolgan: '+remain+' ta xato';
+  // Progress
+  var pct=removed/REAL_ERRORS.length;
+  var circ=113*(1-pct);
+  document.getElementById('prog-circle').style.strokeDashoffset=circ;
+  document.getElementById('prog-num').textContent=removed+'/'+REAL_ERRORS.length;
+}
+
+function lightKey(id){
+  var el=document.getElementById(id);if(!el)return;
+  el.classList.add('lit');setTimeout(function(){el.classList.remove('lit');},600);
+}
+function lightRibbon(id){
+  var el=document.getElementById(id);if(!el)return;
+  el.classList.add('lit');setTimeout(function(){el.classList.remove('lit');},600);
+}
+function highlightMethod(idx){
+  document.querySelectorAll('.method-item').forEach(function(el,i){
+    el.classList.toggle('active',i===idx);
+  });
+}
+
+function resetGame(){
+  removed=0;score=0;selected=null;
+  document.getElementById('success-overlay').classList.remove('show');
+  buildText();updateScore();
+  document.getElementById('st-info').textContent='Xato so\'zni bosing';
+}
+
+// Keyboard support
+document.addEventListener('keydown',function(e){
+  if(e.key==='Backspace'||e.key==='Delete'){
+    e.preventDefault();
+    removeSelected();
+    lightKey(e.key==='Backspace'?'k-bs':'k-del');
+    lightRibbon(e.key==='Backspace'?'rb-back':'rb-del');
+    highlightMethod(e.key==='Backspace'?0:1);
+  }
+  if(e.ctrlKey&&e.key==='z'){lightKey('k-ctrl');lightKey('k-z');lightRibbon('rb-undo');highlightMethod(3);}
+  if(e.ctrlKey&&e.key==='a'){lightKey('k-ctrl');lightKey('k-a');lightRibbon('rb-selall');}
+});
+
+// Ribbon clicks
+document.getElementById('rb-back').onclick=function(){removeSelected();lightRibbon('rb-back');lightKey('k-bs');};
+document.getElementById('rb-del').onclick=function(){removeSelected();lightRibbon('rb-del');lightKey('k-del');};
+
+buildMethods();buildText();updateScore();
+</script>
+</body>
+</html>
