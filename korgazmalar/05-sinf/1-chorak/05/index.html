@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Matnni Ko'chirish</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#03050f;color:#e2e8f0;font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.ui{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:10px 14px}
+
+.hdr{text-align:center;margin-bottom:8px}
+.hdr-badge{font-size:8px;color:#a855f755;letter-spacing:4px}
+.hdr h1{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 0 20px #a855f744}
+.hdr p{font-size:.73rem;color:#475569}
+
+/* Action strip */
+.action-strip{display:flex;gap:6px;justify-content:center;margin-bottom:10px;flex-wrap:wrap}
+.act{padding:8px 16px;border-radius:10px;border:1.5px solid #2a1a4a;
+  color:#64748b;font-size:.8rem;cursor:pointer;font-family:'Inter',sans-serif;
+  font-weight:700;transition:all .25s;background:transparent;display:flex;align-items:center;gap:6px}
+.act:hover{transform:translateY(-2px)}
+.act-copy{border-color:#3b82f655}
+.act-copy:hover,.act-copy.active{background:rgba(59,130,246,.12);border-color:#3b82f6;color:#60a5fa;box-shadow:0 0 16px rgba(59,130,246,.2)}
+.act-cut{border-color:#ef444455}
+.act-cut:hover,.act-cut.active{background:rgba(239,68,68,.12);border-color:#ef4444;color:#f87171;box-shadow:0 0 16px rgba(239,68,68,.2)}
+.act-paste{border-color:#22c55e55}
+.act-paste:hover,.act-paste.active{background:rgba(34,197,94,.12);border-color:#22c55e;color:#4ade80;box-shadow:0 0 16px rgba(34,197,94,.2)}
+.act-drag{border-color:#f59e0b55}
+.act-drag:hover,.act-drag.active{background:rgba(245,158,11,.12);border-color:#f59e0b;color:#fbbf24;box-shadow:0 0 16px rgba(245,158,11,.2)}
+.act-reset{border-color:#1e3a5a}
+.act-reset:hover{border-color:#475569;color:#94a3b8}
+
+/* Main */
+.main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0}
+
+/* Document panels */
+.doc-panel{background:rgba(3,5,15,.88);border:1.5px solid #1e2a4a;border-radius:14px;
+  overflow:hidden;display:flex;flex-direction:column;position:relative}
+.doc-header{padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #1e2a4a}
+.doc-dots{display:flex;gap:3px}
+.doc-dot{width:7px;height:7px;border-radius:50%}
+.doc-name{font-size:.7rem;font-family:'JetBrains Mono',monospace;color:#475569;flex:1;text-align:center}
+.doc-badge{font-size:.62rem;padding:2px 8px;border-radius:4px;font-weight:700}
+.db-from{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid #3b82f633}
+.db-to{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid #22c55e33}
+.doc-body{flex:1;background:#fff;padding:12px;overflow-y:auto;position:relative}
+.doc-text{font-family:'Georgia',serif;font-size:.82rem;line-height:1.85;color:#1e293b;min-height:100%}
+.doc-text .selectable{cursor:pointer;transition:all .2s;border-radius:3px;padding:1px 0}
+.doc-text .selectable:hover{background:#dbeafe}
+.doc-text .selectable.selected{background:#3b82f688;animation:selectPulse .4s ease}
+@keyframes selectPulse{0%{background:#3b82f6aa}100%{background:#3b82f688}}
+.doc-text .selectable.cut{background:#fee2e2;text-decoration:line-through;color:#94a3b8;transition:all .5s}
+.doc-text .pasted{background:#dcfce7;border-radius:3px;animation:pasteAnim .6s ease;padding:1px 2px}
+@keyframes pasteAnim{0%{background:#22c55e55;transform:scale(1.02)}100%{background:#dcfce7;transform:scale(1)}}
+.doc-label{font-size:8px;letter-spacing:2px;font-weight:700;padding:6px 12px 2px}
+.dl-blue{color:#3b82f6}
+.dl-green{color:#22c55e}
+
+/* Clipboard visual */
+.clipboard-zone{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:50;pointer-events:none;opacity:0;transition:opacity .3s}
+.clipboard-zone.show{opacity:1}
+.clipboard-box{background:#1e1a3a;border:2px solid #a855f7;border-radius:14px;
+  padding:12px 18px;text-align:center;box-shadow:0 0 40px rgba(168,85,247,.4);min-width:180px}
+.cb-icon{font-size:2rem;margin-bottom:6px;animation:bounce 0.5s ease infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-6px)}}
+.cb-label{font-size:.65rem;color:#a855f7;letter-spacing:2px;font-weight:700;margin-bottom:4px}
+.cb-text{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:#c4b5fd;
+  background:rgba(168,85,247,.1);border-radius:6px;padding:4px 8px;max-width:200px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Flying text animation */
+.flying-text{position:fixed;z-index:60;font-family:'Georgia',serif;font-size:.85rem;
+  color:#a855f7;font-weight:700;pointer-events:none;text-shadow:0 0 10px #a855f7;
+  transition:none}
+
+/* Arrow animation */
+.arrow-anim{position:fixed;z-index:55;font-size:1.5rem;pointer-events:none;
+  animation:flyArrow .8s ease forwards}
+@keyframes flyArrow{0%{opacity:1;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}100%{opacity:0;transform:scale(.5)}}
+
+/* Right side info */
+.info-side{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+.steps-panel{background:rgba(3,5,15,.88);border:1px solid #1e2a4a;border-radius:14px;
+  padding:11px;flex:1;display:flex;flex-direction:column;overflow:hidden}
+.pt{font-size:8px;letter-spacing:3px;font-weight:700;margin-bottom:8px}
+.pt-purple{color:#a855f7}
+.pt-blue{color:#3b82f6}
+.steps-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.step-card{padding:8px 10px;border-radius:9px;border:1px solid #1e2a4a;
+  background:rgba(5,8,25,.7);transition:all .35s;opacity:.3}
+.step-card.active{opacity:1;animation:cardPop .4s ease}
+@keyframes cardPop{0%{transform:scale(.96);opacity:.5}100%{transform:scale(1);opacity:1}}
+.step-card.copy.active{border-color:#3b82f6;background:rgba(59,130,246,.07)}
+.step-card.cut.active{border-color:#ef4444;background:rgba(239,68,68,.07)}
+.step-card.paste.active{border-color:#22c55e;background:rgba(34,197,94,.07)}
+.step-card.drag.active{border-color:#f59e0b;background:rgba(245,158,11,.07)}
+.sc-top{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.sc-icon{font-size:1rem}
+.sc-title{font-size:.78rem;font-weight:700;color:#e2e8f0}
+.sc-desc{font-size:.67rem;color:#64748b;line-height:1.4}
+.sc-keys{display:flex;gap:4px;margin-top:4px}
+.sc-key{padding:2px 8px;border-radius:4px;font-size:.62rem;font-family:'JetBrains Mono',monospace}
+.key-blue{background:rgba(59,130,246,.1);border:1px solid #3b82f633;color:#60a5fa}
+.key-red{background:rgba(239,68,68,.1);border:1px solid #ef444433;color:#f87171}
+.key-green{background:rgba(34,197,94,.1);border:1px solid #22c55e33;color:#4ade80}
+.key-yellow{background:rgba(245,158,11,.1);border:1px solid #f59e0b33;color:#fbbf24}
+
+.keys-panel{background:rgba(3,5,15,.88);border:1px solid #1e2a4a;border-radius:14px;padding:10px}
+.keys-row{display:flex;gap:5px;flex-wrap:wrap}
+.kbd{min-width:34px;height:28px;border-radius:6px;border:1.5px solid #1e2a4a;
+  background:rgba(5,8,25,.8);display:flex;align-items:center;justify-content:center;
+  font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#475569;
+  transition:all .2s;padding:0 5px}
+.kbd.lit-blue{background:rgba(59,130,246,.2);border-color:#3b82f6;color:#60a5fa;box-shadow:0 0 12px rgba(59,130,246,.4)}
+.kbd.lit-red{background:rgba(239,68,68,.2);border-color:#ef4444;color:#f87171;box-shadow:0 0 12px rgba(239,68,68,.4)}
+.kbd.lit-green{background:rgba(34,197,94,.2);border-color:#22c55e;color:#4ade80;box-shadow:0 0 12px rgba(34,197,94,.4)}
+.kbd.lit-yellow{background:rgba(245,158,11,.2);border-color:#f59e0b;color:#fbbf24;box-shadow:0 0 12px rgba(245,158,11,.4)}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- Clipboard visual -->
+<div class="clipboard-zone" id="clipboard-zone">
+  <div class="clipboard-box">
+    <div class="cb-icon">📋</div>
+    <div class="cb-label">CLIPBOARD — BUFER</div>
+    <div class="cb-text" id="cb-text">Bo'sh</div>
+  </div>
+</div>
+
+<div class="ui">
+  <div class="hdr">
+    <div class="hdr-badge">&#9679; 5-SINF &middot; 1-CHORAK &middot; 5-MAVZU</div>
+    <h1>&#128203; Matnni Ko'chirish &mdash; Amaliy mashg'ulot</h1>
+    <p>Copy, Cut, Paste va Drag &amp; Drop &mdash; animatsiya bilan</p>
+  </div>
+
+  <div class="action-strip">
+    <button class="act act-copy" onclick="doAction('copy')">&#128203; Ctrl+C Ko'chirish</button>
+    <button class="act act-cut"  onclick="doAction('cut')">&#9988; Ctrl+X Qirqish</button>
+    <button class="act act-paste" onclick="doAction('paste')">&#128196; Ctrl+V Joylashtirish</button>
+    <button class="act act-drag" onclick="doAction('drag')">&#128073; Drag &amp; Drop</button>
+    <button class="act act-reset" onclick="doReset()">&#8635;</button>
+  </div>
+
+  <div class="main">
+    <!-- Doc 1: Source -->
+    <div class="doc-panel" id="doc1">
+      <div class="doc-header">
+        <div class="doc-dots">
+          <div class="doc-dot" style="background:#ef4444"></div>
+          <div class="doc-dot" style="background:#f59e0b"></div>
+          <div class="doc-dot" style="background:#22c55e"></div>
+        </div>
+        <div class="doc-name">manba.docx</div>
+        <span class="doc-badge db-from">MANBA</span>
+      </div>
+      <div class="doc-label dl-blue">&#128196; ASL HUJJAT</div>
+      <div class="doc-body">
+        <div class="doc-text" id="doc1-text"></div>
+      </div>
+    </div>
+
+    <!-- Doc 2: Target + Info -->
+    <div class="info-side">
+      <div class="doc-panel" style="flex:1.2">
+        <div class="doc-header">
+          <div class="doc-dots">
+            <div class="doc-dot" style="background:#ef4444"></div>
+            <div class="doc-dot" style="background:#f59e0b"></div>
+            <div class="doc-dot" style="background:#22c55e"></div>
+          </div>
+          <div class="doc-name">nusxa.docx</div>
+          <span class="doc-badge db-to">NUSXA</span>
+        </div>
+        <div class="doc-label dl-green">&#128196; MAQSAD HUJJAT</div>
+        <div class="doc-body">
+          <div class="doc-text" id="doc2-text">
+            <span style="color:#94a3b8;font-size:.78rem;font-style:italic">
+              Bu yerga matn joylashtiriladi...
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="steps-panel">
+        <div class="pt pt-purple">&#9889; AMAL TAVSIFI</div>
+        <div class="steps-list" id="steps-list"></div>
+      </div>
+
+      <div class="keys-panel">
+        <div class="pt pt-blue" style="margin-bottom:7px">&#9109; TEZKOR TUGMALAR</div>
+        <div class="keys-row">
+          <div class="kbd" id="k-ctrl">Ctrl</div>
+          <div class="kbd" id="k-c">C</div>
+          <div class="kbd" id="k-x">X</div>
+          <div class="kbd" id="k-v">V</div>
+          <div class="kbd" id="k-z">Z</div>
+          <div class="kbd" id="k-drag">&#128073;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Background ────────────────────────────────────────────────────────────
+var bgc=document.getElementById('bg'),bx=bgc.getContext('2d'),bPts=[];
+function rBg(){bgc.width=innerWidth;bgc.height=innerHeight;}rBg();window.addEventListener('resize',rBg);
+for(var i=0;i<50;i++) bPts.push({x:Math.random()*1400,y:Math.random()*900,vx:(Math.random()-.5)*.1,vy:(Math.random()-.5)*.1});
+(function ab(){
+  requestAnimationFrame(ab);bx.clearRect(0,0,bgc.width,bgc.height);
+  bPts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bgc.width;if(p.x>bgc.width)p.x=0;
+    if(p.y<0)p.y=bgc.height;if(p.y>bgc.height)p.y=0;});
+  for(var i=0;i<bPts.length;i++) for(var j=i+1;j<bPts.length;j++){
+    var d=Math.hypot(bPts[i].x-bPts[j].x,bPts[i].y-bPts[j].y);
+    if(d<90){bx.beginPath();bx.moveTo(bPts[i].x,bPts[i].y);bx.lineTo(bPts[j].x,bPts[j].y);
+      bx.strokeStyle='rgba(168,85,247,'+(0.025*(1-d/90))+')';bx.stroke();}}
+  bPts.forEach(function(p){bx.beginPath();bx.arc(p.x,p.y,1.2,0,Math.PI*2);bx.fillStyle='rgba(168,85,247,.12)';bx.fill();});
+})();
+
+// ── Data ──────────────────────────────────────────────────────────────────
+var SENTENCES=[
+  {id:'s1',text:"O'zbekiston - go'zal vatanimiz."},
+  {id:'s2',text:"Biz informatika darsini sevamiz."},
+  {id:'s3',text:"Kompyuter hayotimizni osonlashtiradi."},
+  {id:'s4',text:"Kelajak yoshlar qo'lida."},
+];
+
+var STEPS=[
+  {id:'copy',cls:'copy',icon:'&#128203;',title:'Ctrl+C — Ko\'chirish (Copy)',
+   desc:'Matnni belgilab Ctrl+C bosasiz. Matn CLIPBOARD (bufer) ga saqlanadi. Asl matn o\'z joyida qoladi!',
+   keys:[{t:'Ctrl',c:'key-blue'},{t:'C',c:'key-blue'}]},
+  {id:'cut',cls:'cut',icon:'&#9988;',title:'Ctrl+X — Qirqib olish (Cut)',
+   desc:'Ctrl+X — matnni olib, clipboard ga qo\'yadi. Asl joydan O\'CHADI! Joylashtirish uchun Ctrl+V bosing.',
+   keys:[{t:'Ctrl',c:'key-red'},{t:'X',c:'key-red'}]},
+  {id:'paste',cls:'paste',icon:'&#128196;',title:'Ctrl+V — Joylashtirish (Paste)',
+   desc:'Clipboard dagi matnni istagan joyga Ctrl+V bilan joylashtirasiz. Bir necha marta ham joylashtiriladi!',
+   keys:[{t:'Ctrl',c:'key-green'},{t:'V',c:'key-green'}]},
+  {id:'drag',cls:'drag',icon:'&#128073;',title:'Drag & Drop — Sudrab ko\'chirish',
+   desc:'Matnni belgilab, sichqoncha bilan ushlab sudrasiz. Boshqa joyga qo\'yib yuborasiz. Juda qulay!',
+   keys:[{t:'Hold',c:'key-yellow'},{t:'Drag',c:'key-yellow'},{t:'Drop',c:'key-yellow'}]},
+];
+
+var clipboard='';
+var doc1State=[true,true,true,true]; // which sentences visible
+var doc2Content=[];
+var timers=[];
+function T(fn,ms){var id=setTimeout(fn,ms);timers.push(id);}
+function clearT(){timers.forEach(clearTimeout);timers=[];}
+
+// ── Build UI ──────────────────────────────────────────────────────────────
+function buildDoc1(){
+  var el=document.getElementById('doc1-text');el.innerHTML='';
+  SENTENCES.forEach(function(s,i){
+    if(!doc1State[i])return;
+    var span=document.createElement('div');
+    span.id=s.id;span.className='selectable';
+    span.style.marginBottom='6px';
+    span.textContent=s.text;
+    span.onclick=function(){selectSentence(i);};
+    el.appendChild(span);
+  });
+}
+
+function buildSteps(){
+  var list=document.getElementById('steps-list');list.innerHTML='';
+  STEPS.forEach(function(s){
+    var d=document.createElement('div');d.className='step-card '+s.cls;d.id='sc-'+s.id;
+    var keys=s.keys.map(function(k){return '<span class="sc-key '+k.c+'">'+k.t+'</span>';}).join('');
+    d.innerHTML='<div class="sc-top"><div class="sc-icon">'+s.icon+'</div><div class="sc-title">'+s.title+'</div></div>'
+      +'<div class="sc-desc">'+s.desc+'</div>'
+      +'<div class="sc-keys">'+keys+'</div>';
+    list.appendChild(d);
+  });
+}
+
+var selectedIdx=-1;
+function selectSentence(i){
+  selectedIdx=i;
+  document.querySelectorAll('.selectable').forEach(function(el,j){
+    el.classList.toggle('selected',j===i);
+  });
+}
+
+// ── Animations ────────────────────────────────────────────────────────────
+function showClipboard(text){
+  document.getElementById('cb-text').textContent=text.length>30?text.slice(0,27)+'...':text;
+  document.getElementById('clipboard-zone').classList.add('show');
+  setTimeout(function(){document.getElementById('clipboard-zone').classList.remove('show');},1800);
+}
+
+function flyText(text,fromEl,toEl,color,onDone){
+  var fr=fromEl.getBoundingClientRect();
+  var to=toEl.getBoundingClientRect();
+  var fly=document.createElement('div');
+  fly.className='flying-text';
+  fly.textContent=text.length>25?text.slice(0,22)+'...':text;
+  fly.style.cssText='left:'+fr.left+'px;top:'+fr.top+'px;color:'+color+';position:fixed;z-index:60;'
+    +'font-family:Georgia,serif;font-size:.82rem;font-weight:700;pointer-events:none;'
+    +'text-shadow:0 0 12px '+color+';transition:left 0.7s ease,top 0.7s ease,opacity 0.7s ease;';
+  document.body.appendChild(fly);
+  // Animate to target
+  setTimeout(function(){
+    fly.style.left=(to.left+20)+'px';
+    fly.style.top=(to.top+30)+'px';
+    fly.style.opacity='0';
+  },50);
+  // Particles
+  for(var i=0;i<6;i++){
+    spawnParticle(fr.left+fr.width/2,fr.top+fr.height/2,color);
+  }
+  setTimeout(function(){
+    fly.remove();
+    if(onDone)onDone();
+  },800);
+}
+
+function spawnParticle(x,y,color){
+  var p=document.createElement('div');
+  var angle=Math.random()*Math.PI*2;
+  var dist=30+Math.random()*50;
+  p.style.cssText='position:fixed;width:6px;height:6px;border-radius:50%;background:'+color+';'
+    +'left:'+x+'px;top:'+y+'px;z-index:65;pointer-events:none;'
+    +'box-shadow:0 0 6px '+color+';transition:left .6s ease,top .6s ease,opacity .6s ease;';
+  document.body.appendChild(p);
+  setTimeout(function(){
+    p.style.left=(x+Math.cos(angle)*dist)+'px';
+    p.style.top=(y+Math.sin(angle)*dist)+'px';
+    p.style.opacity='0';
+  },30);
+  setTimeout(function(){p.remove();},700);
+}
+
+function lightKbd(id,cls){
+  var el=document.getElementById(id);if(!el)return;
+  el.className='kbd '+cls;
+  setTimeout(function(){el.className='kbd';},700);
+}
+
+function activateStep(id){
+  STEPS.forEach(function(s){
+    var el=document.getElementById('sc-'+s.id);
+    if(el) el.className='step-card '+s.cls+(s.id===id?' active':'');
+  });
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────
+function doAction(act){
+  clearT();
+  document.querySelectorAll('.act').forEach(function(b){b.classList.remove('active');});
+
+  if(act==='copy'){
+    activateStep('copy');
+    lightKbd('k-ctrl','lit-blue');
+    T(function(){lightKbd('k-c','lit-blue');},200);
+
+    var idx=selectedIdx>=0?selectedIdx:0;
+    selectSentence(idx);
+    clipboard=SENTENCES[idx].text;
+    showClipboard(clipboard);
+
+    var fromEl=document.getElementById(SENTENCES[idx].id);
+    var toEl=document.getElementById('doc1-text');
+    if(fromEl){
+      flyText(clipboard,fromEl,fromEl,'#3b82f6');
+      for(var i=0;i<8;i++) T(function(ii){return function(){
+        var el2=document.getElementById(SENTENCES[idx].id);
+        if(el2){var r=el2.getBoundingClientRect();spawnParticle(r.left+Math.random()*r.width,r.top+r.height/2,'#3b82f6');}
+      };}(i),i*80);
+    }
+    T(function(){document.getElementById('st-copy')&&0;},1000);
+  }
+
+  else if(act==='cut'){
+    activateStep('cut');
+    lightKbd('k-ctrl','lit-red');
+    T(function(){lightKbd('k-x','lit-red');},200);
+
+    var idx2=selectedIdx>=0?selectedIdx:1;
+    if(idx2>=SENTENCES.length)idx2=0;
+    selectSentence(idx2);
+    clipboard=SENTENCES[idx2].text;
+    showClipboard(clipboard);
+
+    var fromEl2=document.getElementById(SENTENCES[idx2].id);
+    if(fromEl2){
+      for(var j=0;j<10;j++) T(function(jj){return function(){
+        var el3=document.getElementById(SENTENCES[idx2].id);
+        if(el3){var r2=el3.getBoundingClientRect();spawnParticle(r2.left+Math.random()*r2.width,r2.top+r2.height/2,'#ef4444');}
+      };}(j),j*60);
+      T(function(){
+        var el4=document.getElementById(SENTENCES[idx2].id);
+        if(el4)el4.classList.add('cut');
+        T(function(){
+          doc1State[idx2]=false;
+          buildDoc1();
+          selectedIdx=-1;
+        },500);
+      },600);
+    }
+  }
+
+  else if(act==='paste'){
+    activateStep('paste');
+    lightKbd('k-ctrl','lit-green');
+    T(function(){lightKbd('k-v','lit-green');},200);
+
+    if(!clipboard){clipboard=SENTENCES[0].text;}
+
+    var doc2=document.getElementById('doc2-text');
+    var fromRef=document.getElementById('clipboard-zone');
+
+    showClipboard(clipboard);
+    T(function(){
+      var fromEl3=document.querySelector('.clipboard-box')||document.getElementById('doc1-text');
+      var toEl2=document.getElementById('doc2-text');
+      flyText(clipboard,toEl2,toEl2,'#22c55e',function(){
+        var span2=document.createElement('div');
+        span2.className='pasted';
+        span2.style.marginBottom='6px';
+        span2.style.fontFamily='Georgia,serif';
+        span2.style.fontSize='.82rem';
+        span2.style.lineHeight='1.85';
+        span2.style.color='#1e293b';
+        span2.textContent=clipboard;
+        var dt=document.getElementById('doc2-text');
+        // Remove placeholder
+        if(dt.querySelector('span[style]'))dt.innerHTML='';
+        dt.appendChild(span2);
+        for(var k=0;k<10;k++) T(function(){
+          var r3=dt.getBoundingClientRect();
+          spawnParticle(r3.left+Math.random()*r3.width,r3.top+Math.random()*40,'#22c55e');
+        },k*50);
+      });
+    },400);
+  }
+
+  else if(act==='drag'){
+    activateStep('drag');
+    lightKbd('k-drag','lit-yellow');
+
+    var idx3=selectedIdx>=0?selectedIdx:2;
+    if(idx3>=SENTENCES.length)idx3=0;
+    selectSentence(idx3);
+
+    var fromEl4=document.getElementById(SENTENCES[idx3].id);
+    var toEl3=document.getElementById('doc2-text');
+
+    if(fromEl4){
+      var txt=SENTENCES[idx3].text;
+      // Spawn drag pointer
+      var ptr=document.createElement('div');
+      var fr2=fromEl4.getBoundingClientRect();
+      var to2=toEl3.getBoundingClientRect();
+      ptr.style.cssText='position:fixed;font-size:1.4rem;z-index:70;pointer-events:none;'
+        +'left:'+fr2.left+'px;top:'+(fr2.top-10)+'px;'
+        +'transition:left .9s cubic-bezier(.4,0,.2,1),top .9s cubic-bezier(.4,0,.2,1);';
+      ptr.textContent='👆';
+      document.body.appendChild(ptr);
+      for(var m=0;m<6;m++) T(function(){
+        var r4=fromEl4.getBoundingClientRect();
+        spawnParticle(r4.left+Math.random()*r4.width,r4.top+r4.height/2,'#f59e0b');
+      },m*60);
+      T(function(){
+        ptr.style.left=(to2.left+20)+'px';
+        ptr.style.top=(to2.top+20)+'px';
+        T(function(){
+          ptr.remove();
+          var span3=document.createElement('div');
+          span3.className='pasted';
+          span3.style.cssText='margin-bottom:6px;font-family:Georgia,serif;font-size:.82rem;line-height:1.85;color:#1e293b;';
+          span3.textContent=txt;
+          var dt2=document.getElementById('doc2-text');
+          if(dt2.querySelector('span[style]'))dt2.innerHTML='';
+          dt2.appendChild(span3);
+          for(var n=0;n<10;n++) T(function(){
+            var r5=dt2.getBoundingClientRect();
+            spawnParticle(r5.left+Math.random()*r5.width,r5.top+Math.random()*40,'#f59e0b');
+          },n*50);
+        },950);
+      },200);
+    }
+  }
+}
+
+function doReset(){
+  clearT();
+  doc1State=[true,true,true,true];
+  clipboard='';selectedIdx=-1;
+  buildDoc1();
+  document.getElementById('doc2-text').innerHTML='<span style="color:#94a3b8;font-size:.78rem;font-style:italic">Bu yerga matn joylashtiriladi...</span>';
+  STEPS.forEach(function(s){
+    var el=document.getElementById('sc-'+s.id);
+    if(el)el.className='step-card '+s.cls;
+  });
+}
+
+buildDoc1();buildSteps();
+</script>
+</body>
+</html>
