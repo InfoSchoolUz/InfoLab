@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sichqoncha va Klaviatura</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050a05;color:#e2e8f0;font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.ui{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:10px 14px}
+
+.hdr{text-align:center;margin-bottom:8px}
+.hdr-badge{font-size:8px;color:#22c55e55;letter-spacing:4px}
+.hdr h1{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 0 20px #22c55e44}
+.hdr p{font-size:.73rem;color:#475569}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;justify-content:center;margin-bottom:10px}
+.tab{padding:7px 18px;border-radius:8px;border:1px solid #1a3a1a;
+  color:#475569;font-size:.8rem;cursor:pointer;transition:all .2s;background:transparent}
+.tab.active{background:rgba(34,197,94,.12);border-color:#22c55e;color:#4ade80;font-weight:700}
+
+/* Main */
+.main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0}
+
+/* Device panel */
+.device-panel{background:rgba(3,10,3,.88);border:1px solid #1a3a1a;border-radius:14px;
+  padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.panel-title{font-size:8px;letter-spacing:3px;font-weight:700;align-self:flex-start}
+.pt-green{color:#22c55e}
+
+/* Mouse SVG */
+.mouse-wrap{position:relative;display:flex;justify-content:center}
+svg.mouse{width:120px;height:160px;filter:drop-shadow(0 0 20px #22c55e44)}
+.mouse-label{position:absolute;font-size:.65rem;color:#22c55e;font-family:'JetBrains Mono',monospace}
+.ml-left{left:-60px;top:30px}
+.ml-right{right:-60px;top:30px}
+.ml-scroll{right:-55px;top:75px}
+.ml-click-anim{position:absolute;width:30px;height:30px;border-radius:50%;
+  border:2px solid #22c55e;opacity:0;transform:scale(.5);
+  transition:all .3s;pointer-events:none}
+
+/* Keyboard */
+.keyboard-wrap{display:flex;flex-direction:column;gap:4px;align-items:center}
+.kb-row{display:flex;gap:4px}
+.key{min-width:28px;height:28px;border-radius:5px;border:1.5px solid #1a3a1a;
+  background:rgba(5,20,5,.8);display:flex;align-items:center;justify-content:center;
+  font-size:.62rem;font-family:'JetBrains Mono',monospace;color:#475569;
+  cursor:pointer;transition:all .15s;padding:0 4px;user-select:none}
+.key:hover{border-color:#22c55e44;color:#64748b}
+.key.pressed{background:rgba(34,197,94,.2);border-color:#22c55e;
+  color:#4ade80;box-shadow:0 0 10px rgba(34,197,94,.4);transform:scale(.92)}
+.key.special{background:rgba(34,197,94,.06);color:#334155}
+.key.wide{min-width:52px}
+.key.wider{min-width:80px}
+.key.widest{min-width:130px}
+
+/* Right panel */
+.right{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+.info-panel{background:rgba(3,10,3,.88);border:1px solid #1a3a1a;border-radius:14px;
+  padding:12px;flex:1;display:flex;flex-direction:column}
+.info-list{flex:1;display:flex;flex-direction:column;gap:5px;overflow-y:auto}
+.info-item{display:flex;gap:8px;padding:8px 10px;border-radius:9px;
+  background:rgba(5,20,5,.7);border:1px solid #1a3a1a;
+  cursor:pointer;transition:all .2s}
+.info-item:hover{border-color:#22c55e44}
+.info-item.active{border-color:#22c55e;background:rgba(34,197,94,.06)}
+.ii-icon{font-size:1.2rem;flex-shrink:0}
+.ii-body{flex:1}
+.ii-title{font-size:.78rem;font-weight:700;color:#e2e8f0;margin-bottom:2px}
+.ii-desc{font-size:.67rem;color:#64748b;line-height:1.4}
+.ii-shortcut{font-family:'JetBrains Mono',monospace;font-size:.65rem;
+  color:#22c55e;margin-top:3px;background:rgba(34,197,94,.08);
+  border-radius:4px;padding:2px 7px;display:inline-block}
+
+.demo-panel{background:rgba(3,10,3,.88);border:1px solid #1a3a1a;border-radius:14px;padding:12px}
+.pt-blue{color:#3b82f6}
+.demo-screen{background:#fff;border-radius:8px;padding:10px;min-height:60px;
+  font-family:'Inter',sans-serif;font-size:.8rem;color:#1e293b;position:relative;overflow:hidden}
+#demo-cursor{position:absolute;width:12px;height:12px;pointer-events:none;
+  transition:all .1s;z-index:10}
+#typed-text{color:#1e293b;line-height:1.6}
+#text-cursor{display:inline-block;width:2px;height:14px;background:#1e293b;
+  animation:blink .7s infinite;vertical-align:middle}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.click-ripple{position:absolute;border-radius:50%;background:rgba(34,197,94,.4);
+  animation:ripple .5s ease-out forwards;pointer-events:none}
+@keyframes ripple{from{width:0;height:0;opacity:1}to{width:40px;height:40px;margin:-20px;opacity:0}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="ui">
+  <div class="hdr">
+    <div class="hdr-badge">&#9679; 5-SINF &middot; 1-CHORAK &middot; 2-MAVZU</div>
+    <h1>&#128432; Sichqoncha &amp; &#9000; Klaviatura</h1>
+    <p>Kompyuter bilan ishlashning asosiy vositalari</p>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-mouse" onclick="setTab('mouse')">&#128432; Sichqoncha</div>
+    <div class="tab" id="tab-kb" onclick="setTab('kb')">&#9000; Klaviatura</div>
+  </div>
+
+  <div class="main">
+    <!-- LEFT: Device -->
+    <div class="device-panel">
+      <div class="panel-title pt-green" id="device-title">&#128432; SICHQONCHA &mdash; INTERAKTIV</div>
+
+      <!-- Mouse view -->
+      <div id="mouse-view" class="mouse-wrap">
+        <svg class="mouse" viewBox="0 0 120 160">
+          <!-- Body -->
+          <rect x="10" y="30" width="100" height="110" rx="50" ry="50" fill="#0f2a0f" stroke="#22c55e" stroke-width="1.5"/>
+          <!-- Left button -->
+          <path d="M10,30 Q10,10 60,10 L60,70 L10,70 Z" fill="#1a4a1a" stroke="#22c55e" stroke-width="1" id="mouse-left" style="cursor:pointer" onclick="clickLeft()"/>
+          <!-- Right button -->
+          <path d="M110,30 Q110,10 60,10 L60,70 L110,70 Z" fill="#1a4a1a" stroke="#22c55e" stroke-width="1" id="mouse-right" style="cursor:pointer" onclick="clickRight()"/>
+          <!-- Middle line -->
+          <line x1="60" y1="10" x2="60" y2="70" stroke="#22c55e" stroke-width="1" opacity=".5"/>
+          <!-- Scroll wheel -->
+          <rect x="50" y="25" width="20" height="35" rx="10" fill="#0a1a0a" stroke="#22c55e" stroke-width="1.2" id="scroll-wheel"/>
+          <rect x="53" y="35" width="14" height="15" rx="7" fill="#22c55e" opacity=".6" id="scroll-inner"/>
+          <!-- Cable -->
+          <path d="M45,150 Q45,165 60,170 Q75,165 75,150" fill="none" stroke="#1a3a1a" stroke-width="3"/>
+        </svg>
+        <div class="mouse-label ml-left">&#9664; Chap<br>tugma</div>
+        <div class="mouse-label ml-right">O'ng &#9654;<br>tugma</div>
+        <div class="mouse-label ml-scroll">&#8597; Scroll<br>g'ildiragi</div>
+      </div>
+
+      <!-- Keyboard view -->
+      <div id="kb-view" class="keyboard-wrap" style="display:none">
+        <div class="kb-row">
+          <div class="key" onclick="pressKey(this,'Esc')">Esc</div>
+          <div class="key" onclick="pressKey(this,'F1')">F1</div>
+          <div class="key" onclick="pressKey(this,'F2')">F2</div>
+          <div class="key" onclick="pressKey(this,'F3')">F3</div>
+          <div class="key" onclick="pressKey(this,'F4')">F4</div>
+          <div class="key" onclick="pressKey(this,'F5')">F5</div>
+        </div>
+        <div class="kb-row">
+          <div class="key" onclick="pressKey(this,'~')">~</div>
+          <div class="key" onclick="pressKey(this,'1')">1</div>
+          <div class="key" onclick="pressKey(this,'2')">2</div>
+          <div class="key" onclick="pressKey(this,'3')">3</div>
+          <div class="key" onclick="pressKey(this,'4')">4</div>
+          <div class="key" onclick="pressKey(this,'5')">5</div>
+          <div class="key wide" onclick="pressKey(this,'⌫')">&#9003;</div>
+        </div>
+        <div class="kb-row">
+          <div class="key wider" onclick="pressKey(this,'Tab')">Tab</div>
+          <div class="key" onclick="typeKey('Q')">Q</div>
+          <div class="key" onclick="typeKey('W')">W</div>
+          <div class="key" onclick="typeKey('E')">E</div>
+          <div class="key" onclick="typeKey('R')">R</div>
+          <div class="key" onclick="typeKey('T')">T</div>
+          <div class="key" onclick="typeKey('Y')">Y</div>
+        </div>
+        <div class="kb-row">
+          <div class="key wider special" onclick="pressKey(this,'Caps')">Caps</div>
+          <div class="key" onclick="typeKey('A')">A</div>
+          <div class="key" onclick="typeKey('S')">S</div>
+          <div class="key" onclick="typeKey('D')">D</div>
+          <div class="key" onclick="typeKey('F')">F</div>
+          <div class="key" onclick="typeKey('G')">G</div>
+          <div class="key wide" onclick="pressKey(this,'Enter')">Enter</div>
+        </div>
+        <div class="kb-row">
+          <div class="key wider special" onclick="pressKey(this,'Shift')">Shift</div>
+          <div class="key" onclick="typeKey('Z')">Z</div>
+          <div class="key" onclick="typeKey('X')">X</div>
+          <div class="key" onclick="typeKey('C')">C</div>
+          <div class="key" onclick="typeKey('V')">V</div>
+          <div class="key" onclick="typeKey('B')">B</div>
+          <div class="key wider special" onclick="pressKey(this,'Shift')">Shift</div>
+        </div>
+        <div class="kb-row">
+          <div class="key wide special" onclick="pressKey(this,'Ctrl')">Ctrl</div>
+          <div class="key special" onclick="pressKey(this,'Alt')">Alt</div>
+          <div class="key widest" onclick="typeKey(' ')">Space</div>
+          <div class="key special" onclick="pressKey(this,'Alt')">Alt</div>
+          <div class="key wide special" onclick="pressKey(this,'Ctrl')">Ctrl</div>
+        </div>
+      </div>
+
+      <!-- Mouse action hint -->
+      <div id="mouse-hint" style="font-size:.7rem;color:#334155;text-align:center">
+        Tugmalarni bosib ko'ring! &#128071;
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+      <div class="info-panel">
+        <div class="panel-title pt-green" style="margin-bottom:8px" id="info-title">&#9889; SICHQONCHA AMALLARI</div>
+        <div class="info-list" id="info-list"></div>
+      </div>
+
+      <div class="demo-panel">
+        <div class="panel-title pt-blue" style="margin-bottom:6px">&#128187; DEMO EKRAN</div>
+        <div class="demo-screen" id="demo-screen">
+          <div id="typed-text">Salom<span id="text-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Background
+var bgc=document.getElementById('bg'),bx=bgc.getContext('2d'),bPts=[];
+function rBg(){bgc.width=innerWidth;bgc.height=innerHeight;}rBg();
+window.addEventListener('resize',rBg);
+for(var i=0;i<40;i++) bPts.push({x:Math.random()*1400,y:Math.random()*900,vx:(Math.random()-.5)*.08,vy:(Math.random()-.5)*.08});
+(function ab(){requestAnimationFrame(ab);bx.clearRect(0,0,bgc.width,bgc.height);
+  bPts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bgc.width;if(p.x>bgc.width)p.x=0;
+    if(p.y<0)p.y=bgc.height;if(p.y>bgc.height)p.y=0;});
+  for(var i=0;i<bPts.length;i++) for(var j=i+1;j<bPts.length;j++){
+    var d=Math.hypot(bPts[i].x-bPts[j].x,bPts[i].y-bPts[j].y);
+    if(d<90){bx.beginPath();bx.moveTo(bPts[i].x,bPts[i].y);bx.lineTo(bPts[j].x,bPts[j].y);
+      bx.strokeStyle='rgba(34,197,94,'+(0.02*(1-d/90))+')';bx.stroke();}}
+  bPts.forEach(function(p){bx.beginPath();bx.arc(p.x,p.y,1.2,0,Math.PI*2);bx.fillStyle='rgba(34,197,94,.1)';bx.fill();});
+})();
+
+// Data
+var MOUSE_INFO=[
+  {icon:'&#128432;',title:'Chap tugma — 1 marta bosish',desc:'Faylni, papkani yoki tugmani tanlash uchun. Eng ko\'p ishlatiladigan amal.',shortcut:'Click'},
+  {icon:'&#128432;',title:'Chap tugma — 2 marta bosish',desc:'Faylni ochish, dasturni ishga tushirish. Tez-tez ikki marta bosing.',shortcut:'Double Click'},
+  {icon:'&#128432;',title:'O\'ng tugma bosish',desc:'Kontekst menyusini ochadi. Qo\'shimcha imkoniyatlar ro\'yxati chiqadi.',shortcut:'Right Click'},
+  {icon:'&#8597;',title:'G\'ildirak aylantirish',desc:'Sahifani yuqori-pastga siljitish. Hujjat yoki veb-saytda aylanish.',shortcut:'Scroll'},
+  {icon:'&#128432;',title:'Sudrab olib borish',desc:'Faylni bir joydan ikkinchi joyga ko\'chirish. Bosib ushlab suring.',shortcut:'Drag & Drop'},
+];
+
+var KB_INFO=[
+  {icon:'&#9000;',title:'Harflar (A-Z)',desc:'Matn yozish uchun. Caps Lock yoniq bo\'lsa — katta harf, o\'chiq bo\'lsa — kichik harf.',shortcut:'A..Z'},
+  {icon:'&#8679;',title:'Shift tugmasi',desc:'Katta harf yozish. Belgilarning ustki qismini (!, @, #) yozish uchun.',shortcut:'Shift + harf'},
+  {icon:'&#9003;',title:'Backspace',desc:'Kursordan chapga — bir harfni o\'chiradi. Ko\'p bosish — ko\'p o\'chiradi.',shortcut:'Backspace'},
+  {icon:'&#8629;',title:'Enter tugmasi',desc:'Yangi qatorga o\'tish. Buyruqni tasdiqlash. Tugmani bosish.',shortcut:'Enter'},
+  {icon:'&#9251;',title:'Space (Bo\'shliq)',desc:'So\'zlar orasiga bo\'shliq qo\'yish. Eng uzun tugma.',shortcut:'Space'},
+  {icon:'&#8963;',title:'Ctrl + S',desc:'Hujjatni saqlash. Ishlayotganda tez-tez bosing!',shortcut:'Ctrl + S'},
+];
+
+var curTab='mouse';
+var typedStr='Salom';
+
+function setTab(tab){
+  curTab=tab;
+  document.getElementById('tab-mouse').className='tab'+(tab==='mouse'?' active':'');
+  document.getElementById('tab-kb').className='tab'+(tab==='kb'?' active':'');
+  document.getElementById('mouse-view').style.display=tab==='mouse'?'flex':'none';
+  document.getElementById('kb-view').style.display=tab==='kb'?'flex':'none';
+  document.getElementById('mouse-hint').style.display=tab==='mouse'?'block':'none';
+  document.getElementById('device-title').innerHTML=tab==='mouse'?
+    '&#128432; SICHQONCHA &mdash; INTERAKTIV':'&#9000; KLAVIATURA &mdash; INTERAKTIV';
+  document.getElementById('info-title').innerHTML=tab==='mouse'?
+    '&#9889; SICHQONCHA AMALLARI':'&#9889; KLAVIATURA TUGMALARI';
+  buildInfo(tab==='mouse'?MOUSE_INFO:KB_INFO);
+}
+
+function buildInfo(items){
+  var list=document.getElementById('info-list');list.innerHTML='';
+  items.forEach(function(item,i){
+    var d=document.createElement('div');d.className='info-item';
+    d.innerHTML='<div class="ii-icon">'+item.icon+'</div>'
+      +'<div class="ii-body"><div class="ii-title">'+item.title+'</div>'
+      +'<div class="ii-desc">'+item.desc+'</div>'
+      +'<div class="ii-shortcut">'+item.shortcut+'</div></div>';
+    d.onclick=function(){
+      document.querySelectorAll('.info-item').forEach(function(el){el.classList.remove('active');});
+      d.classList.add('active');
+    };
+    list.appendChild(d);
+  });
+}
+
+function clickLeft(){
+  var el=document.getElementById('mouse-left');
+  el.style.fill='#22c55e';el.style.opacity='.7';
+  addRipple();
+  showHint('Chap tugma bosildi — tanlash &#10003;');
+  setTimeout(function(){el.style.fill='#1a4a1a';el.style.opacity='1';},300);
+}
+
+function clickRight(){
+  var el=document.getElementById('mouse-right');
+  el.style.fill='#f59e0b';el.style.opacity='.7';
+  showHint('O\'ng tugma — menyu ochildi &#128196;');
+  setTimeout(function(){el.style.fill='#1a4a1a';el.style.opacity='1';},300);
+}
+
+function showHint(msg){
+  var h=document.getElementById('mouse-hint');
+  h.innerHTML=msg;h.style.color='#22c55e';
+  setTimeout(function(){h.innerHTML='Tugmalarni bosib ko\'ring! &#128071;';h.style.color='#334155';},1500);
+}
+
+function addRipple(){
+  var screen=document.getElementById('demo-screen');
+  var r=document.createElement('div');r.className='click-ripple';
+  r.style.left=(Math.random()*80+10)+'%';r.style.top=(Math.random()*60+10)+'%';
+  screen.appendChild(r);
+  setTimeout(function(){r.remove();},500);
+}
+
+function pressKey(el,lbl){
+  el.classList.add('pressed');
+  setTimeout(function(){el.classList.remove('pressed');},300);
+  if(lbl==='⌫'||lbl==='Backspace'){
+    typedStr=typedStr.slice(0,-1);
+    document.getElementById('typed-text').innerHTML=typedStr+'<span id="text-cursor"></span>';
+  } else if(lbl==='Enter'){
+    typedStr+='\n';
+    document.getElementById('typed-text').innerHTML=typedStr.replace(/\n/g,'<br>')+'<span id="text-cursor"></span>';
+  }
+}
+
+function typeKey(ch){
+  var allKeys=document.querySelectorAll('.key');
+  allKeys.forEach(function(k){if(k.textContent===ch){k.classList.add('pressed');setTimeout(function(){k.classList.remove('pressed');},200);}});
+  typedStr+=ch;
+  document.getElementById('typed-text').innerHTML=typedStr+'<span id="text-cursor"></span>';
+}
+
+buildInfo(MOUSE_INFO);
+</script>
+</body>
+  </html>
