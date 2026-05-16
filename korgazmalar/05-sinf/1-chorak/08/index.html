@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Matnni Tekshirish</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#050310;color:#e2e8f0;font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.ui{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;padding:10px 14px}
+
+.hdr{text-align:center;margin-bottom:8px}
+.hdr-badge{font-size:8px;color:#8b5cf655;letter-spacing:4px}
+.hdr h1{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 0 20px #8b5cf644}
+.hdr p{font-size:.73rem;color:#475569}
+
+.main{flex:1;display:grid;grid-template-columns:1.3fr 1fr;gap:10px;min-height:0}
+
+/* Editor */
+.editor-panel{background:rgba(5,3,16,.9);border:1px solid #1e1a3a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.panel-title{font-size:8px;letter-spacing:3px;font-weight:700;padding:9px 13px 5px}
+.pt-purple{color:#8b5cf6}
+.pt-green{color:#22c55e}
+.pt-blue{color:#3b82f6}
+.pt-red{color:#ef4444}
+
+.word-chrome{flex:1;display:flex;flex-direction:column;margin:0 10px 10px;border-radius:10px;overflow:hidden;border:1px solid #1e1a3a}
+.titlebar{background:#100a25;padding:5px 10px;display:flex;align-items:center;gap:6px}
+.t-dots{display:flex;gap:3px}
+.t-dot{width:7px;height:7px;border-radius:50%}
+.t-name{flex:1;text-align:center;font-size:.7rem;color:#64748b;font-family:'JetBrains Mono',monospace}
+.ribbon{background:#0a0618;padding:5px 10px;display:flex;gap:5px;border-bottom:1px solid #1e1a3a;flex-wrap:wrap}
+.rb{padding:3px 9px;border-radius:5px;border:1px solid #1e1a3a;font-size:.68rem;color:#334155;cursor:pointer;transition:all .2s}
+.rb:hover{background:rgba(139,92,246,.1);border-color:#8b5cf644;color:#c4b5fd}
+.rb.lit{background:rgba(139,92,246,.2);border-color:#8b5cf6;color:#c4b5fd}
+
+.text-body{flex:1;background:#fff;padding:14px;overflow-y:auto;position:relative}
+.doc-text{font-family:'Georgia',serif;font-size:.86rem;line-height:1.9;color:#1e293b}
+.doc-text .err-spell{border-bottom:2px solid #ef4444;cursor:pointer;position:relative;transition:all .2s}
+.doc-text .err-spell:hover{background:#fee2e2;border-radius:2px}
+.doc-text .err-gram{border-bottom:2px solid #3b82f6;cursor:pointer;position:relative}
+.doc-text .err-gram:hover{background:#dbeafe;border-radius:2px}
+.doc-text .err-style{border-bottom:2px dotted #f59e0b;cursor:pointer}
+.doc-text .err-fixed{background:#dcfce7;border-radius:2px;border-bottom:none;transition:all .4s}
+.doc-text .err-ignored{color:#94a3b8;border-bottom:none}
+
+/* Suggestion popup */
+.suggestion-popup{position:fixed;z-index:50;background:#1e1a3a;border:1.5px solid #8b5cf6;
+  border-radius:10px;padding:10px;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.suggestion-popup.show{opacity:1;pointer-events:all}
+.sp-header{font-size:.65rem;color:#8b5cf6;letter-spacing:2px;margin-bottom:6px;font-weight:700}
+.sp-error{font-size:.72rem;color:#f87171;font-family:'JetBrains Mono',monospace;
+  background:rgba(239,68,68,.1);border-radius:4px;padding:2px 7px;margin-bottom:6px;text-decoration:line-through}
+.sp-suggests{display:flex;flex-direction:column;gap:3px}
+.sp-sug{padding:5px 9px;border-radius:6px;font-size:.75rem;font-family:'JetBrains Mono',monospace;
+  color:#e2e8f0;cursor:pointer;transition:all .2s;border:1px solid #2a1a4a}
+.sp-sug:hover{background:rgba(139,92,246,.2);border-color:#8b5cf6;color:#c4b5fd}
+.sp-actions{display:flex;gap:5px;margin-top:6px;border-top:1px solid #2a1a4a;padding-top:6px}
+.sp-act{flex:1;padding:4px;border-radius:5px;font-size:.62rem;cursor:pointer;text-align:center;
+  border:1px solid #2a1a4a;color:#475569;transition:all .2s}
+.sp-act:hover{border-color:#8b5cf644;color:#94a3b8}
+
+.status-bar{background:#0a0618;padding:3px 10px;font-size:.62rem;color:#334155;
+  font-family:'JetBrains Mono',monospace;display:flex;gap:10px}
+
+/* Right */
+.right{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+/* Error stats */
+.stats-panel{background:rgba(5,3,16,.9);border:1px solid #1e1a3a;border-radius:14px;padding:12px}
+.stats-row{display:flex;gap:8px}
+.stat-chip{flex:1;padding:8px 10px;border-radius:9px;text-align:center;border:1px solid}
+.sc-num{font-size:1.6rem;font-weight:800;margin-bottom:2px}
+.sc-lbl{font-size:.65rem;color:#64748b}
+.stat-spell{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2)}
+.stat-spell .sc-num{color:#ef4444}
+.stat-gram{background:rgba(59,130,246,.06);border-color:rgba(59,130,246,.2)}
+.stat-gram .sc-num{color:#3b82f6}
+.stat-fixed{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2)}
+.stat-fixed .sc-num{color:#22c55e}
+
+/* Info panel */
+.info-panel{background:rgba(5,3,16,.9);border:1px solid #1e1a3a;border-radius:14px;padding:12px;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.info-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.info-item{padding:8px 10px;border-radius:9px;background:rgba(8,5,20,.7);border:1px solid #1e1a3a;transition:all .3s}
+.info-item.active{border-color:#8b5cf6;background:rgba(139,92,246,.07);animation:slideIn .4s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.ii-top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+.ii-icon{font-size:1rem}
+.ii-title{font-size:.78rem;font-weight:700;color:#e2e8f0}
+.ii-desc{font-size:.67rem;color:#64748b;line-height:1.4}
+.ii-sample{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:.68rem;font-family:'JetBrains Mono',monospace}
+.ii-wrong{color:#f87171;text-decoration:line-through}
+.ii-arrow{color:#334155}
+.ii-right{color:#4ade80}
+
+/* Check btn */
+.check-btn{width:100%;padding:10px;border-radius:10px;border:1.5px solid #8b5cf6;
+  background:rgba(139,92,246,.1);color:#c4b5fd;font-size:.85rem;cursor:pointer;
+  font-family:'Inter',sans-serif;font-weight:700;transition:all .2s;display:flex;
+  align-items:center;justify-content:center;gap:8px}
+.check-btn:hover{background:rgba(139,92,246,.2);box-shadow:0 0 20px rgba(139,92,246,.3)}
+.check-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Scan animation */
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#8b5cf6,transparent);
+  top:0;opacity:0;z-index:5;pointer-events:none}
+.scan-line.scanning{animation:scan 1.2s ease forwards}
+@keyframes scan{0%{top:0;opacity:1}100%{top:100%;opacity:0}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<!-- Suggestion popup -->
+<div class="suggestion-popup" id="suggestion-popup">
+  <div class="sp-header">&#128161; TAKLIF</div>
+  <div class="sp-error" id="sp-error">xato</div>
+  <div class="sp-suggests" id="sp-suggests"></div>
+  <div class="sp-actions">
+    <div class="sp-act" id="sp-ignore" onclick="ignoreError()">E'tiborsiz</div>
+    <div class="sp-act" id="sp-all" onclick="fixAll()">Barchasini to'g'irla</div>
+  </div>
+</div>
+
+<div class="ui">
+  <div class="hdr">
+    <div class="hdr-badge">&#9679; 5-SINF &middot; 1-CHORAK &middot; 8-MAVZU</div>
+    <h1>&#128269; Matnni Tekshirish &mdash; Spell Check</h1>
+    <p>Imloviy va grammatik xatolarni avtomatik topish va tuzatish</p>
+  </div>
+
+  <div class="main">
+    <div class="editor-panel">
+      <div class="panel-title pt-purple">&#128196; WORD &mdash; XATO SO'ZLARGA BOSING</div>
+      <div class="word-chrome">
+        <div class="titlebar">
+          <div class="t-dots">
+            <div class="t-dot" style="background:#ef4444"></div>
+            <div class="t-dot" style="background:#f59e0b"></div>
+            <div class="t-dot" style="background:#22c55e"></div>
+          </div>
+          <div class="t-name">tekshirish.docx — Microsoft Word</div>
+        </div>
+        <div class="ribbon">
+          <span class="rb" id="rb-check" onclick="startCheck()">&#128269; Tekshirish (F7)</span>
+          <span class="rb" id="rb-auto">&#9989; Avto-tuzatish</span>
+          <span class="rb" id="rb-lang">&#127758; UZB</span>
+          <span class="rb" id="rb-reset" onclick="resetAll()">&#8635; Qayta</span>
+        </div>
+        <div class="text-body" id="text-body">
+          <div class="doc-text" id="doc-text"></div>
+          <div class="scan-line" id="scan-line"></div>
+        </div>
+        <div class="status-bar">
+          <span id="st-errors">&#128269; Tekshirilmagan</span>
+          <span id="st-words">So'zlar: 32</span>
+          <span id="st-lang">UZB</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="stats-panel">
+        <div class="panel-title pt-purple" style="margin-bottom:8px">&#128202; XATOLAR STATISTIKASI</div>
+        <div class="stats-row">
+          <div class="stat-chip stat-spell">
+            <div class="sc-num" id="cnt-spell">0</div>
+            <div class="sc-lbl">Imloviy</div>
+          </div>
+          <div class="stat-chip stat-gram">
+            <div class="sc-num" id="cnt-gram">0</div>
+            <div class="sc-lbl">Grammatik</div>
+          </div>
+          <div class="stat-chip stat-fixed">
+            <div class="sc-num" id="cnt-fixed">0</div>
+            <div class="sc-lbl">Tuzatildi</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <div class="panel-title pt-purple" style="margin-bottom:8px">&#9889; TEKSHIRISH TURLARI</div>
+        <div class="info-list" id="info-list"></div>
+      </div>
+
+      <button class="check-btn" id="check-btn" onclick="startCheck()">
+        &#128269; F7 &mdash; Matnni Tekshirish
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+var bgc=document.getElementById('bg'),bx=bgc.getContext('2d'),bPts=[];
+function rBg(){bgc.width=innerWidth;bgc.height=innerHeight;}rBg();window.addEventListener('resize',rBg);
+for(var i=0;i<45;i++) bPts.push({x:Math.random()*1400,y:Math.random()*900,vx:(Math.random()-.5)*.09,vy:(Math.random()-.5)*.09});
+(function ab(){requestAnimationFrame(ab);bx.clearRect(0,0,bgc.width,bgc.height);
+  bPts.forEach(function(p){p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bgc.width;if(p.x>bgc.width)p.x=0;
+    if(p.y<0)p.y=bgc.height;if(p.y>bgc.height)p.y=0;});
+  for(var i=0;i<bPts.length;i++) for(var j=i+1;j<bPts.length;j++){
+    var d=Math.hypot(bPts[i].x-bPts[j].x,bPts[i].y-bPts[j].y);
+    if(d<90){bx.beginPath();bx.moveTo(bPts[i].x,bPts[i].y);bx.lineTo(bPts[j].x,bPts[j].y);
+      bx.strokeStyle='rgba(139,92,246,'+(0.02*(1-d/90))+')';bx.stroke();}}
+  bPts.forEach(function(p){bx.beginPath();bx.arc(p.x,p.y,1.2,0,Math.PI*2);bx.fillStyle='rgba(139,92,246,.12)';bx.fill();});
+})();
+
+var ERRORS=[
+  {id:'e1',wrong:'kompyutor',correct:'kompyuter',type:'spell',suggests:['kompyuter','komputer']},
+  {id:'e2',wrong:'klavyatura',correct:'klaviatura',type:'spell',suggests:['klaviatura','klavyatura']},
+  {id:'e3',wrong:'hujjatni',correct:'hujjatni',type:'ok'},
+  {id:'e4',wrong:'prograamma',correct:'programma',type:'spell',suggests:['programma','programa']},
+  {id:'e5',wrong:'internett',correct:'internet',type:'spell',suggests:['internet','Internet']},
+  {id:'e6',wrong:'foydalanadi',correct:'foydalanadi',type:'ok'},
+  {id:'e7',wrong:'ma\'lumotlar',correct:'ma\'lumotlar',type:'ok'},
+];
+
+var TEXT_SEGMENTS=[
+  'Bugungi darsda biz ',{id:'e1'},' bilan ishlashni o\'rgandik.\n',
+  {id:'e2'},' orqali matn yoziladi va ',{id:'e4'},' ishlatiladi.\n',
+  'Biz ',{id:'e5'},' tarmog\'ida ',{id:'e6'},' va ',{id:'e7'},' yuboramiz.',
+];
+
+var errorStates={};
+var checked=false;
+var currentError=null;
+
+var INFO=[
+  {icon:'&#128308;',title:'Imloviy xato (Spelling)',desc:'So\'z noto\'g\'ri yozilgan. Qizil chiziq bilan belgilanadi.',wrong:'kompyutor',right:'kompyuter'},
+  {icon:'&#128309;',title:'Grammatik xato (Grammar)',desc:'Gap tuzilishi noto\'g\'ri. Ko\'k chiziq bilan ko\'rsatiladi.',wrong:'men ketdi',right:'men ketdim'},
+  {icon:'&#128992;',title:'Uslub xatosi (Style)',desc:'So\'z to\'g\'ri, lekin boshqacha yozish tavsiya qilinadi. Sariq.',wrong:'katta',right:'muhim'},
+  {icon:'&#128994;',title:'To\'g\'ri so\'z',desc:'Xatosi yo\'q. Word hech narsa ko\'rsatmaydi.',wrong:'',right:''},
+];
+
+function buildText(){
+  var dt=document.getElementById('doc-text');dt.innerHTML='';
+  TEXT_SEGMENTS.forEach(function(seg){
+    if(typeof seg==='string'){
+      dt.appendChild(document.createTextNode(seg.replace(/\\n/g,'\n')));
+    } else {
+      var err=ERRORS.find(function(e){return e.id===seg.id;});
+      if(!err)return;
+      var span=document.createElement('span');span.id=err.id;span.textContent=err.wrong;
+      if(err.type!=='ok'){
+        span.setAttribute('data-type',err.type);
+        span.onclick=function(){if(checked)showSuggestion(err,span);};
+      }
+      dt.appendChild(span);
+    }
+  });
+}
+
+function buildInfo(){
+  var list=document.getElementById('info-list');list.innerHTML='';
+  INFO.forEach(function(item,i){
+    var d=document.createElement('div');d.className='info-item';d.id='inf'+i;
+    d.innerHTML='<div class="ii-top"><div class="ii-icon">'+item.icon+'</div>'
+      +'<div class="ii-title">'+item.title+'</div></div>'
+      +'<div class="ii-desc">'+item.desc+'</div>'
+      +(item.wrong?'<div class="ii-sample"><span class="ii-wrong">'+item.wrong+'</span>'
+        +'<span class="ii-arrow">&#8594;</span><span class="ii-right">'+item.right+'</span></div>':'');
+    list.appendChild(d);
+  });
+}
+
+var spellCount=0,gramCount=0,fixedCount=0;
+
+function startCheck(){
+  if(checked)return;
+  var sl=document.getElementById('scan-line');
+  sl.className='scan-line scanning';
+  document.getElementById('rb-check').classList.add('lit');
+  setTimeout(function(){document.getElementById('rb-check').classList.remove('lit');},600);
+
+  setTimeout(function(){
+    sl.className='scan-line';
+    checked=true;
+    spellCount=0;gramCount=0;
+
+    ERRORS.forEach(function(err){
+      if(err.type==='ok')return;
+      var el=document.getElementById(err.id);
+      if(!el)return;
+      if(err.type==='spell'){el.className='err-spell';spellCount++;}
+      if(err.type==='gram'){el.className='err-gram';gramCount++;}
+      errorStates[err.id]='active';
+    });
+
+    document.getElementById('cnt-spell').textContent=spellCount;
+    document.getElementById('cnt-gram').textContent=gramCount;
+    document.getElementById('st-errors').textContent='&#128308; '+spellCount+' imloviy, &#128309; '+gramCount+' grammatik xato';
+    document.getElementById('info-list').querySelectorAll('.info-item')[0].classList.add('active');
+  },1300);
+}
+
+function showSuggestion(err,span){
+  currentError=err;
+  var popup=document.getElementById('suggestion-popup');
+  document.getElementById('sp-error').textContent=err.wrong;
+  var sugs=document.getElementById('sp-suggests');sugs.innerHTML='';
+  err.suggests.forEach(function(s){
+    var d=document.createElement('div');d.className='sp-sug';d.textContent=s;
+    d.onclick=function(){fixError(err,s);};
+    sugs.appendChild(d);
+  });
+  var rect=span.getBoundingClientRect();
+  popup.style.left=Math.min(rect.left,window.innerWidth-220)+'px';
+  popup.style.top=(rect.bottom+6)+'px';
+  popup.classList.add('show');
+  document.getElementById('info-list').querySelectorAll('.info-item')[0].classList.add('active');
+}
+
+function fixError(err,replacement){
+  var el=document.getElementById(err.id);
+  if(!el)return;
+  el.textContent=replacement;
+  el.className='err-fixed';
+  errorStates[err.id]='fixed';
+  fixedCount++;
+  document.getElementById('cnt-fixed').textContent=fixedCount;
+  var remain=(spellCount+gramCount)-fixedCount;
+  document.getElementById('st-errors').textContent=remain>0?
+    (remain+' ta xato qoldi'):'&#10003; Barcha xatolar tuzatildi!';
+  closeSuggestion();
+}
+
+function ignoreError(){
+  if(!currentError)return;
+  var el=document.getElementById(currentError.id);
+  if(el){el.className='err-ignored';}
+  closeSuggestion();
+}
+
+function fixAll(){
+  ERRORS.forEach(function(err){
+    if(err.type==='ok')return;
+    var el=document.getElementById(err.id);
+    if(el&&errorStates[err.id]==='active'){
+      el.textContent=err.correct;el.className='err-fixed';
+      errorStates[err.id]='fixed';fixedCount++;
+    }
+  });
+  document.getElementById('cnt-fixed').textContent=fixedCount;
+  document.getElementById('st-errors').textContent='&#10003; Barcha xatolar tuzatildi!';
+  closeSuggestion();
+}
+
+function closeSuggestion(){
+  document.getElementById('suggestion-popup').classList.remove('show');
+  currentError=null;
+}
+
+function resetAll(){
+  checked=false;spellCount=0;gramCount=0;fixedCount=0;errorStates={};currentError=null;
+  document.getElementById('cnt-spell').textContent=0;
+  document.getElementById('cnt-gram').textContent=0;
+  document.getElementById('cnt-fixed').textContent=0;
+  document.getElementById('st-errors').textContent='&#128269; Tekshirilmagan';
+  closeSuggestion();buildText();
+  document.querySelectorAll('.info-item').forEach(function(el){el.classList.remove('active');});
+}
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='F7'){e.preventDefault();startCheck();}
+  if(e.key==='Escape')closeSuggestion();
+});
+document.addEventListener('click',function(e){
+  var popup=document.getElementById('suggestion-popup');
+  if(!popup.contains(e.target)&&!e.target.classList.contains('err-spell'))closeSuggestion();
+});
+
+buildText();buildInfo();
+</script>
+</body>
+</html>
